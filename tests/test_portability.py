@@ -609,5 +609,17 @@ class TheEntryPointSurvivesALegacyCodePage(unittest.TestCase):
         self.assertIn('unknown command', p.stderr.decode('utf-8', 'replace'))
 
 
+class CatalogOutputEncoding(unittest.TestCase):
+    """v0.6.1: the tag's Windows package job died printing '✓' to a cp1252 stdout."""
+
+    def test_check_bundle_survives_a_cp1252_stdout(self):
+        env = dict(os.environ, PYTHONIOENCODING='cp1252')
+        out = subprocess.run([sys.executable, '-m', 'usage.catalog', '--check-bundle'],
+                             cwd=str(pathlib.Path(__file__).resolve().parent.parent), env=env,
+                             capture_output=True, timeout=60)
+        self.assertNotIn(b'UnicodeEncodeError', out.stderr)
+        self.assertIn(out.returncode, (0, 1))        # 1 = bayat katalog, kapının kendi cevabı
+
+
 if __name__ == '__main__':
     unittest.main()
