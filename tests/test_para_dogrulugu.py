@@ -258,6 +258,13 @@ class DepodakiKatalogGuncel(unittest.TestCase):
         self.assertEqual(anthropic['claude-haiku-5-5']['tiers'][0]['tier']['size'], 100000)
         self.assertEqual(anthropic['claude-opus-5-5']['input'], 4)
 
+    def test_fable_5_2_kendi_fiyatiyla_gomulu(self):
+        # 2026-11-14: gömülü katalogda Fable 5.2 yoktu → temiz kurulum onu 5.1'in 10/50 $'ına
+        # düşürür, %25 fazla gösterirdi. Gerçek fiyat 8/40 $ (models.dev, 2026-11-14).
+        self.assertIn('claude-fable-5-2', catalog.GEREKLI_MODELLER)
+        f52 = catalog._read_bundled()[0]['anthropic']['claude-fable-5-2']
+        self.assertEqual((f52['input'], f52['output']), (8, 40))
+
 
 if __name__ == '__main__':
     unittest.main()
