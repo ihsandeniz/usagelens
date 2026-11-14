@@ -319,6 +319,7 @@ def gomulu_sorunlari(bugun: date = None) -> list:
 
 
 def _main(argv) -> int:
+    _paths.ensure_utf8_output()
     if '--update' in argv:
         st = update()
         print(f"güncellendi → {st['path']}\n"
