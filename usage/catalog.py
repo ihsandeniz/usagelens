@@ -40,7 +40,7 @@ STALE_AFTER_DAYS = 45
 # Gömülü katalogda bulunması gereken güncel Claude modelleri. Yoksa temiz kurulum bunları
 # eski aile fiyatına düşürür: 2026-11-05'te 86 günlük katalog 5.774 $'ı 9.666 $ gösterdi.
 # Yeni bir aile çıkınca buraya eklenir; `--check-bundle` sürümden önce bunu denetler.
-GEREKLI_MODELLER = ('claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-fable-5-1')
+GEREKLI_MODELLER = ('claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-fable-5-1', 'claude-fable-5-2')
 
 _COST_FIELDS = ('input', 'output', 'cache_read', 'cache_write')
 
