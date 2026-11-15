@@ -9,6 +9,9 @@ already on your disk.** Formerly *usage-tracker*. Repository: `ihsandeniz/usage-
 pipx install git+https://github.com/ihsandeniz/usage-tracker.git && usagelens setup
 ```
 
+Needs Python 3.9+ (`python3 --version`); on older Pythons pipx stops with an unclear
+"cannot determine package name" error.
+
 `setup` walks you through each step and shows exactly what it will write before writing it
 (every file is backed up; `usagelens setup --uninstall` undoes it). Then `usagelens panel`
 opens the panel at `http://127.0.0.1:8770`. No account, no telemetry, loopback only,
@@ -40,7 +43,7 @@ with anonymous evidence (`usagelens kanit`) you can paste into a bug report.
 | Arch (AUR) | package `usagelens` — **not uploaded yet** |
 | Windows | download the `.exe` from [Releases](https://github.com/ihsandeniz/usage-tracker/releases/latest) and double-click it → [docs/WINDOWS.md](docs/WINDOWS.md) |
 
-Needs Python 3.9+. `usage-tracker` still works as a command name.
+`usage-tracker` still works as a command name.
 
 ## More
 

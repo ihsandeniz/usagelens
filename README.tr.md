@@ -9,6 +9,9 @@ duran dosyalardan.** Eski adı *usage-tracker*. Depo: `ihsandeniz/usage-tracker`
 pipx install git+https://github.com/ihsandeniz/usage-tracker.git && usagelens setup
 ```
 
+Python 3.9+ gerekir (`python3 --version`); daha eski Python'da pipx anlaşılmaz bir
+"cannot determine package name" hatasıyla durur.
+
 `setup` her adımda neyi yazacağını yazmadan önce gösterir (her dosya önce yedeklenir;
 `usagelens setup --uninstall` geri alır). Sonra `usagelens panel` paneli
 `http://127.0.0.1:8770`'te açar. Hesap yok, telemetri yok, yalnız loopback, stdlib Python.

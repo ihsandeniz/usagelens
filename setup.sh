@@ -1022,7 +1022,10 @@ else
   # Hard stop: "too old" followed by "setup verified" (what --auto used to do on 3.8) is a
   # contradiction. 3.9 is what pyproject.toml, CI and the tests promise.
   bad "python3 $(python3 -c 'import sys;print("%d.%d"%sys.version_info[:2])' 2>/dev/null) is too old — usage-tracker needs Python 3.9 or newer"
-  echo "   $(pkg_hint python)   (or use a newer python via pyenv / uv)"
+  # Not `pkg_hint python`: python3 IS installed here, just old — reinstalling it changes
+  # nothing (measured on Ubuntu 20.04, 2026-11-15). Point at a newer interpreter instead.
+  echo "   install a newer Python next to it — e.g. \`uv python install 3.12\`, pyenv,"
+  echo "   or your distro's python3.9+ package (Ubuntu 20.04: sudo apt install python3.9)"
   exit 1
 fi
 for c in curl jq; do
