@@ -31,9 +31,9 @@ def collect(days: int = 30) -> dict:
     scanned = _genlog.scan([d for d in _DIRS if d.exists()])
     if scanned['found']:
         return _genlog.tokens_card(PROVIDER_ID, PROVIDER_NAME, scanned,
-                                   'Cody yerel loglarından (tespit-tabanlı; $ yok). Format ADAY.')
+                                   'From Cody local logs (detection-based; no $). Format UNVERIFIED.')
     return _genlog.nodata_card(PROVIDER_ID, PROVIDER_NAME,
-                               'Cody kurulu (tespit edildi) ama okunur token logu yok/format doğrulanacak.')
+                               'Cody installed (detected) but no readable token log / format not yet verified.')
 
 
 if __name__ == '__main__':

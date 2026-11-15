@@ -25,6 +25,19 @@ import time
 import urllib.request
 from pathlib import Path
 
+
+def _lang():
+    """UT_LANG > LC_ALL/LANG; varsayılan İngilizce (panel, CLI ve rozetle aynı kural)."""
+    v = (os.environ.get('UT_LANG') or '').strip().lower()[:2]
+    if v in ('en', 'tr'):
+        return v
+    loc = (os.environ.get('LC_ALL') or os.environ.get('LANG') or '').lower()
+    return 'tr' if loc.startswith('tr') else 'en'
+
+
+def _L(en, tr):
+    return tr if _lang() == 'tr' else en
+
 SELF_DIR = Path(__file__).resolve().parent
 
 # surface.conf (varsa) → env
@@ -65,8 +78,10 @@ except ImportError:
 
 if _QT is None:
     sys.stderr.write(
-        'usage-tray: Qt binding yok. Kur: `pip install PyQt5` (veya PySide6).\n'
-        'Native tray opsiyoneldir — waybar rozeti + floating widget bağımsız çalışır.\n')
+        _L('usage-tray: no Qt binding. Install: `pip install PyQt5` (or PySide6).\n'
+           'The tray is optional — the waybar badge and the floating widget work without it.\n',
+           'usage-tray: Qt binding yok. Kur: `pip install PyQt5` (veya PySide6).\n'
+           'Native tray opsiyoneldir — waybar rozeti + floating widget bağımsız çalışır.\n'))
     sys.exit(1)
 
 # Sinyal adı PyQt5/PySide arasında aynı: .connect kullanılır.
@@ -134,11 +149,12 @@ def _dur(sec):
     if s <= 0:
         return ''
     d, h, m = s // 86400, (s % 86400) // 3600, (s % 3600) // 60
+    u = ('g', 'sa', 'dk') if _lang() == 'tr' else ('d', 'h', 'm')
     if d > 0:
-        return '%dg%dsa' % (d, h)
+        return '%d%s%d%s' % (d, u[0], h, u[1])
     if h > 0:
-        return '%dsa%ddk' % (h, m)
-    return '%ddk' % m
+        return '%d%s%d%s' % (h, u[1], m, u[2])
+    return '%d%s' % (m, u[2])
 
 
 def _rst(sec):
@@ -149,7 +165,8 @@ def _rst(sec):
 def _summarize(data):
     """(class, headline_pct, tooltip_html, menu_headline) döndür."""
     if not data:
-        return 'off', None, 'usage-tracker kapalı (%s)' % BASE, 'usage-tracker · kapalı'
+        return ('off', None, _L('usage-tracker off (%s)', 'usage-tracker kapalı (%s)') % BASE,
+                _L('usage-tracker · off', 'usage-tracker · kapalı'))
     th = data.get('thresholds') or {'warn': 75, 'crit': 90}
     provs = {p.get('id'): p for p in (data.get('providers') or [])}
     claude = provs.get('claude') or {}
@@ -171,8 +188,8 @@ def _summarize(data):
            else 'warn' if tepe >= th['warn'] else 'ok')
 
     lines = ['<b>Claude</b>',
-             '  %s oturum %s%s' % (_cbar(sp, th), _cpct(sp, th), _rst(sess.get('resetInSec'))),
-             '  %s haftalık %s%s' % (_cbar(wp, th), _cpct(wp, th), _rst(week.get('resetInSec')))]
+             _L('  %s session %s%s', '  %s oturum %s%s') % (_cbar(sp, th), _cpct(sp, th), _rst(sess.get('resetInSec'))),
+             _L('  %s weekly %s%s', '  %s haftalık %s%s') % (_cbar(wp, th), _cpct(wp, th), _rst(week.get('resetInSec')))]
     if wmodel.get('pct') is not None:
         lines.append('  %s %s %s' % (_cbar(wmodel.get('pct'), th),
                                      wmodel.get('name') or 'model', _cpct(wmodel.get('pct'), th)))
@@ -183,15 +200,15 @@ def _summarize(data):
     # ikonun rengi "her şey yolunda" demeye devam ediyordu (2026-08-12 ölçümü, guard'da).
     lv = claude.get('live') or {}
     if lv.get('stale'):
-        lines.append('  <span color="%s">⚠ bayat veri%s</span>'
+        lines.append(_L('  <span color="%s">⚠ stale data%s</span>', '  <span color="%s">⚠ bayat veri%s</span>')
                      % (_COLORS['warn'],
-                        (' · %s önce' % _dur(lv.get('ageSec'))) if _dur(lv.get('ageSec')) else ''))
+                        (_L(' · %s ago', ' · %s önce') % _dur(lv.get('ageSec'))) if _dur(lv.get('ageSec')) else ''))
     spend = claude.get('spend') or {}
     curr = spend.get('currency', 'USD')
     headline = 'Claude · %d%%' % round(hi)
     if spend.get('today') is not None:
-        lines.append('  💰 bugün %s · 30g %s' % (_num(spend.get('today'), curr), _num(spend.get('last30d'), curr)))
-        headline = 'Claude %d%% · bugün %s' % (round(hi), _num(spend.get('today'), curr))
+        lines.append(_L('  💰 today %s · 30d %s', '  💰 bugün %s · 30g %s') % (_num(spend.get('today'), curr), _num(spend.get('last30d'), curr)))
+        headline = _L('Claude %d%% · today %s', 'Claude %d%% · bugün %s') % (round(hi), _num(spend.get('today'), curr))
     for p in (data.get('providers') or []):
         if p.get('id') == 'claude':
             continue
@@ -218,7 +235,8 @@ def _limit_lines(p, th):
         out += '\n  %s %s %s' % (_cbar(b.get('pct'), th), label, _cpct(b.get('pct'), th))
         if b.get('expired'):
             # Ölçüm ölü bir pencereye ait: sıfır demek yerine sebebini yaz.
-            out += '  <span color="%s">↺ pencere sıfırlandı</span>' % _COLORS['off']
+            out += _L('  <span color="%s">↺ window reset</span>',
+                      '  <span color="%s">↺ pencere sıfırlandı</span>') % _COLORS['off']
         else:
             out += _rst(b.get('resetInSec'))
     return out
@@ -239,9 +257,9 @@ def _provider_line(p, th=None):
         curr = p.get('currency', 'USD')
         bits = []
         if sp.get('today') is not None:
-            bits.append('bugün %s' % _num(sp.get('today'), curr))
+            bits.append(_L('today %s', 'bugün %s') % _num(sp.get('today'), curr))
         if sp.get('month') is not None:
-            bits.append('ay %s' % _num(sp.get('month'), curr))
+            bits.append(_L('month %s', 'ay %s') % _num(sp.get('month'), curr))
         if bal.get('remaining') is not None:
             bits.append('kredi %s' % _num(bal.get('remaining'), curr))
         line = '<b>%s</b>  %s' % (name, ' · '.join(bits)) if bits else '<b>%s</b>' % name
@@ -275,7 +293,8 @@ def _provider_line(p, th=None):
         return head + _limit_lines(p, th)
     if kind == 'local':
         if st == 'offline':
-            return '<b>%s</b>  <span color="%s">servis kapalı</span>' % (name, _COLORS['off'])
+            return _L('<b>%s</b>  <span color="%s">service off</span>',
+                      '<b>%s</b>  <span color="%s">servis kapalı</span>') % (name, _COLORS['off'])
         return '<b>%s</b>  %s model' % (name, p.get('modelCount', 0))
     return None
 
@@ -338,7 +357,7 @@ def _run_surface(arg):
     """
     widget = SELF_DIR / 'usage-widget'
     if not widget.exists():
-        mesaj = 'usage-widget kurulu değil: %s' % widget
+        mesaj = _L('usage-widget not installed: %s', 'usage-widget kurulu değil: %s') % widget
         _log(mesaj)
         return False, mesaj
 
@@ -355,7 +374,7 @@ def _run_surface(arg):
             stdout=subprocess.DEVNULL,
             stderr=(hedef or subprocess.DEVNULL))
     except OSError as exc:
-        mesaj = 'usage-widget %s başlatılamadı: %s' % (arg, exc)
+        mesaj = _L('usage-widget %s could not start: %s', 'usage-widget %s başlatılamadı: %s') % (arg, exc)
         _log(mesaj)
         return False, mesaj
     finally:
@@ -372,7 +391,7 @@ def _run_surface(arg):
             continue
         if rc == 0:
             return True, ''
-        mesaj = 'usage-widget %s başarısız (çıkış %d)' % (arg, rc)
+        mesaj = _L('usage-widget %s failed (exit %d)', 'usage-widget %s başarısız (çıkış %d)') % (arg, rc)
         ayrinti = _son_log_satiri()
         _log(mesaj)
         return False, (mesaj + ' — ' + ayrinti) if ayrinti else mesaj
@@ -388,7 +407,7 @@ def _open_panel():
         subprocess.Popen(['xdg-open', BASE], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return ''
     except OSError as exc:
-        yedek = 'xdg-open da başarısız: %s' % exc
+        yedek = _L('xdg-open failed too: %s', 'xdg-open da başarısız: %s') % exc
         _log(yedek)
         return (mesaj + ' · ' + yedek) if mesaj else yedek
 
@@ -402,11 +421,11 @@ class Tray:
         self.header = menu.addAction('usage-tracker')   # canlı manşet (devre dışı bilgi satırı)
         self.header.setEnabled(False)
         menu.addSeparator()
-        menu.addAction('Panel Aç', self._panel_ac)
-        menu.addAction('Widget Aç/Kapa', self._widget_toggle)
-        menu.addAction('Yenile', self.refresh)
+        menu.addAction(_L('Open panel', 'Panel Aç'), self._panel_ac)
+        menu.addAction(_L('Toggle widget', 'Widget Aç/Kapa'), self._widget_toggle)
+        menu.addAction(_L('Refresh', 'Yenile'), self.refresh)
         menu.addSeparator()
-        menu.addAction('Çıkış', app.quit)
+        menu.addAction(_L('Quit', 'Çıkış'), app.quit)
         self.icon.setContextMenu(menu)
         self.icon.activated.connect(self._on_activate)
         self.icon.show()
@@ -421,7 +440,7 @@ class Tray:
         if not mesaj:
             return
         try:
-            self.icon.showMessage('usage-tracker', mesaj + '\n(ayrıntı: %s)' % LOG_PATH,
+            self.icon.showMessage('usage-tracker', mesaj + _L('\n(details: %s)', '\n(ayrıntı: %s)') % LOG_PATH,
                                   QtWidgets.QSystemTrayIcon.Warning, 6000)
         except Exception:
             # Bazı SNI host'ları showMessage'ı desteklemez; log yine de yazıldı.
@@ -454,8 +473,10 @@ def main():
     app.setQuitOnLastWindowClosed(False)
     if not QtWidgets.QSystemTrayIcon.isSystemTrayAvailable():
         sys.stderr.write(
-            'usage-tray: sistem tepsisi mevcut değil. Wayland/Hyprland\'da waybar "tray" '
-            'modülünü aç (SNI host). GNOME için AppIndicator eklentisi gerekebilir.\n')
+            _L('usage-tray: no system tray available. On Wayland/Hyprland enable waybar\'s "tray" '
+               'module (SNI host). GNOME may need the AppIndicator extension.\n',
+               'usage-tray: sistem tepsisi mevcut değil. Wayland/Hyprland\'da waybar "tray" '
+               'modülünü aç (SNI host). GNOME için AppIndicator eklentisi gerekebilir.\n'))
         sys.exit(2)
     Tray(app)
     sys.exit(app.exec() if _QT == 'pyside6' else app.exec_())

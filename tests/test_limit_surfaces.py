@@ -283,7 +283,7 @@ class TheDocsAgreeWithTheCode(unittest.TestCase):
     when there were 16. A CLI example showed the output of version 0.3.0.
     """
 
-    DOCS = ('README.md', 'README.tr.md', 'surface/README.md',
+    DOCS = ('README.md', 'docs/GUIDE.md', 'README.tr.md', 'surface/README.md',
             'docs/CLI.md', 'docs/WIRE.md', 'docs/WINDOWS.md', 'docs/WINDOWS.tr.md')
 
     def _docs(self):
@@ -295,7 +295,7 @@ class TheDocsAgreeWithTheCode(unittest.TestCase):
     def test_no_document_invents_a_setup_subcommand(self):
         """`setup.sh` takes `probe|preview|do|undo`; a step name goes *after* `do`."""
         import re
-        steps = ('base', 'server', 'waybar', 'widget', 'tray', 'keys', 'verify')
+        steps = ('base', 'server', 'waybar', 'widget', 'tray', 'statusline', 'keys', 'verify')
         pattern = re.compile(r'setup\.sh\s+(' + '|'.join(steps) + r')\b')
         for name, text in self._docs():
             with self.subTest(doc=name):

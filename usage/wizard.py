@@ -623,6 +623,28 @@ def _undo_keys() -> dict:
     return {'ok': True, 'changed': True, 'messages': messages}
 
 
+# ── adım: statusline (Claude Code durum satırı → canlı limit, ağsız) ─────────────
+# Gövde `usage/claude_statusline.py`'de: setup.sh de aynısını çağırır, ayrışmasınlar.
+def _probe_statusline() -> dict:
+    from . import claude_statusline
+    return claude_statusline.probe()
+
+
+def _preview_statusline() -> dict:
+    from . import claude_statusline
+    return claude_statusline.preview()
+
+
+def _do_statusline(opts: dict) -> dict:
+    from . import claude_statusline
+    return claude_statusline.do()
+
+
+def _undo_statusline() -> dict:
+    from . import claude_statusline
+    return claude_statusline.undo()
+
+
 # ── adım: verify ──────────────────────────────────────────────────────────────
 def _probe_verify() -> dict:
     return {'server': server_alive(), 'url': PANEL_URL}
@@ -661,6 +683,8 @@ _STEPS = {
     'install':   ('_probe_install',   '_preview_install',   '_do_install',   '_undo_install'),
     'autostart': ('_probe_autostart', '_preview_autostart', '_do_autostart', '_undo_autostart'),
     'shortcut':  ('_probe_shortcut',  '_preview_shortcut',  '_do_shortcut',  '_undo_shortcut'),
+    'statusline': ('_probe_statusline', '_preview_statusline', '_do_statusline',
+                   '_undo_statusline'),
     'keys':      ('_probe_keys',      '_preview_keys',      '_do_keys',      '_undo_keys'),
     'verify':    ('_probe_verify',    '_preview_verify',    '_do_verify',    None),
 }
@@ -672,12 +696,15 @@ def _fn(step: str, slot: int):
 
 #: `--auto`'nun koşacağı adımlar. `keys` **bilinçli dışarıda**: otomatik mod kullanıcıya
 #: sormadan çalışır ve bir anahtarı sormadan yazmanın yolu yoktur.
-AUTO_STEPS = ('install', 'autostart', 'shortcut', 'verify')
+#: `statusline` içeride: yeni kurulumda limit yüzdesi ilk açılışta görünsün diye. Sorulmadan
+#: yazılan tek dış dosya Claude Code'un settings.json'ı; önce yedeklenir, `undo` geri alır.
+AUTO_STEPS = ('install', 'autostart', 'shortcut', 'statusline', 'verify')
 
 STEP_TITLES = {
     'install':   'Put the program somewhere permanent',
     'autostart': 'Start it automatically when you log in',
     'shortcut':  'Add a shortcut that opens the panel',
+    'statusline': 'Show live limits (Claude Code status line)',
     'keys':      'Provider API keys (optional)',
     'verify':    'Check that everything works',
 }
@@ -702,6 +729,7 @@ def probe() -> dict:
         'install': _probe_install(),
         'autostart': _probe_autostart(),
         'shortcut': _probe_shortcut(),
+        'statusline': _probe_statusline(),
         'keys': _probe_keys(),
         'verify': _probe_verify(),
     }
@@ -750,7 +778,7 @@ def auto(opts: dict | None = None) -> dict:
 def uninstall() -> dict:
     """Sihirbazın yazdığı her şeyi geri al. **Anahtarlar ve veri kalır** — onları silmek
     kullanıcının ayrıca isteyeceği bir şeydir, kurulumu geri almanın yan etkisi değil."""
-    results = [undo(step) for step in ('shortcut', 'autostart')]
+    results = [undo(step) for step in ('statusline', 'shortcut', 'autostart')]
     return {'ok': all(r.get('ok') for r in results), 'results': results,
             'kept': {'keys': str(env_file()) if not is_windows() else 'HKCU\\Environment',
                      'data': [str(_paths.config_dir()), str(_paths.state_dir())]}}

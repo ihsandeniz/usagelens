@@ -61,7 +61,7 @@ def _parse(days: int) -> dict:
                 try:
                     o = json.loads(line)
                 except ValueError as e:
-                    print(f'Provider {PROVIDER_ID}: Bozuk JSON satırı {LOG_PATH}:{line_no}: {e}', file=sys.stderr)
+                    print(f'Provider {PROVIDER_ID}: broken JSON line {LOG_PATH}:{line_no}: {e}', file=sys.stderr)
                     continue
                 props = o.get('properties') or o
                 ts = o.get('time') or o.get('timestamp')
@@ -95,7 +95,7 @@ def _parse(days: int) -> dict:
     except OSError:
         return {**card, 'status': 'nodata', 'tokens': {'total': 0}, 'total': {'usd': 0},
                 'today': {'tokens': 0, 'usd': 0}, 'byModel': [{'short': '—', 'model': 'n/a'}],
-                'byDay': [], 'sessions': 0, 'note': 'analytics.jsonl okunamadı.'}
+                'byDay': [], 'sessions': 0, 'note': 'analytics.jsonl unreadable.'}
 
     total_tok = sent + recv
     model_list = sorted(({'model': k, **v, 'usd': round(v['usd'], 4)} for k, v in models.items()),
@@ -108,7 +108,7 @@ def _parse(days: int) -> dict:
             'byModel': model_list,
             'byDay': [{'day': d, 'usd': round(v, 4)} for d, v in sorted(by_day.items())],
             'sessions': sessions,
-            'note': 'aider --analytics loglarından; $ tahmini (aider kendi hesabı). Alanlar ADAY.'}
+            'note': 'From aider --analytics logs; $ is an estimate (aider\'s own figure). Fields UNVERIFIED.'}
 
 
 def collect(days: int = 30) -> dict:

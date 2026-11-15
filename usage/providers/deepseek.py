@@ -59,7 +59,7 @@ def _build(days: int) -> dict:
         return None
     card = {'id': PROVIDER_ID, 'name': PROVIDER_NAME, 'kind': 'spend',
             'currency': 'USD', 'available': True, 'status': 'ok', 'error': None,
-            'tier': 'kullandıkça-öde'}
+            'tier': 'pay-as-you-go'}
     req = urllib.request.Request(BALANCE_URL, headers={
         'Authorization': 'Bearer ' + key,
         'Accept': 'application/json',
@@ -70,15 +70,15 @@ def _build(days: int) -> dict:
             data = json.load(r)
     except urllib.error.HTTPError as e:
         if e.code in (401, 403):
-            return {**card, 'status': 'error', 'error': f'HTTP {e.code} (geçersiz/yetersiz key)'}
+            return {**card, 'status': 'error', 'error': f'HTTP {e.code} (invalid/insufficient key)'}
         return {**card, 'status': 'error', 'error': f'HTTP {e.code}'}
     except Exception as e:
-        return {**card, 'status': 'error', 'error': f'Erişilemedi ({type(e).__name__})'}
+        return {**card, 'status': 'error', 'error': f'Unreachable ({type(e).__name__})'}
 
     info = _pick(data.get('balance_infos'))
     if not info:
         return {**card, 'status': 'error',
-                'error': 'Bakiye alanı bulunamadı (endpoint doğrulanacak)'}
+                'error': 'Balance field not found (endpoint to be verified)'}
     cur = (info.get('currency') or 'USD').upper()
     total = _num(info.get('total_balance'))
     granted = _num(info.get('granted_balance'))
@@ -90,7 +90,7 @@ def _build(days: int) -> dict:
     if topped is not None:
         card['balance']['toppedUp'] = round(topped, 4)
     if data.get('is_available') is False:
-        card['note'] = 'Bakiye tükendi / hesap kullanılamıyor (is_available=false).'
+        card['note'] = 'Balance exhausted / account unavailable (is_available=false).'
     return card
 
 

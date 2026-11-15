@@ -14,7 +14,7 @@
 #   ./setup.sh preview <step>        JSON: the exact diff/lines a step would write
 #   ./setup.sh do <step> [opts]      JSON: apply one step
 #   ./setup.sh undo <step>           JSON: revert one step
-#   steps: server · waybar · widget · tray · keys · verify
+#   steps: server · waybar · widget · tray · statusline · keys · verify
 # In these modes stdout is JSON only; human lines go to stderr.
 #
 # What "safe" means here, concretely:
@@ -196,14 +196,36 @@ find_waybar_config() {
   return 1
 }
 
-pkg_hint() { # "how do I install X on this distro?"
+pkg_name() { # pkg_name LOGICAL MANAGER → the real package name on that distro
+  # Logical names: python · curl · jq · pyqt5. The names differ per distro, and a wrong
+  # one is a dead end (`apt install python` does not exist on Ubuntu 20.04+,
+  # `python-pyqt5` is Arch-only). Measured on the five clean containers, 2026-11-15.
+  case "$1:$2" in
+    python:pacman) echo python ;;      python:*) echo python3 ;;
+    pyqt5:pacman)  echo python-pyqt5 ;; pyqt5:apt-get) echo python3-pyqt5 ;;
+    pyqt5:dnf)     echo python3-qt5 ;;  pyqt5:zypper)  echo python3-qt5 ;;
+    pyqt5:apk)     echo py3-qt5 ;;      pyqt5:*)       echo PyQt5 ;;
+    *) echo "$1" ;;
+  esac
+}
+pkg_hint() { # "how do I install X on this distro?" — X is a logical name (see pkg_name)
   local p="$1"
-  if   command -v pacman  >/dev/null 2>&1; then echo "sudo pacman -S --needed $p"
-  elif command -v apt-get >/dev/null 2>&1; then echo "sudo apt install $p"
-  elif command -v dnf     >/dev/null 2>&1; then echo "sudo dnf install $p"
-  elif command -v zypper  >/dev/null 2>&1; then echo "sudo zypper install $p"
-  elif command -v apk     >/dev/null 2>&1; then echo "sudo apk add $p"
-  else echo "install $p with your package manager"; fi
+  if   command -v pacman  >/dev/null 2>&1; then echo "sudo pacman -S --needed $(pkg_name "$p" pacman)"
+  elif command -v apt-get >/dev/null 2>&1; then echo "sudo apt install $(pkg_name "$p" apt-get)"
+  elif command -v dnf     >/dev/null 2>&1; then echo "sudo dnf install $(pkg_name "$p" dnf)"
+  elif command -v zypper  >/dev/null 2>&1; then echo "sudo zypper install $(pkg_name "$p" zypper)"
+  elif command -v apk     >/dev/null 2>&1; then echo "sudo apk add $(pkg_name "$p" apk)"
+  else echo "install $(pkg_name "$p" other) with your package manager"; fi
+}
+
+claude_sl() { # claude_sl probe|preview|do|undo → JSON on stdout (one body: usage/claude_statusline.py)
+  PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}" python3 -m usage.claude_statusline "$1"
+}
+sl_field() { # sl_field JSON KEY → value ('' if missing)
+  printf '%s' "$1" | python3 -c 'import json,sys
+try: v=json.load(sys.stdin).get(sys.argv[1])
+except Exception: v=None
+print("" if v is None else (" ".join(v) if isinstance(v,list) else v))' "$2" 2>/dev/null
 }
 
 server_alive() { # true only if OUR server answers — not just "something on :PORT"
@@ -350,7 +372,7 @@ probe_all() {
   command -v hyprctl   >/dev/null 2>&1 && kv deps.hyprctl b true   || kv deps.hyprctl b false
   command -v systemctl >/dev/null 2>&1 && kv deps.systemctl b true || kv deps.systemctl b false
   command -v waybar    >/dev/null 2>&1 && kv deps.waybar b true    || kv deps.waybar b false
-  if qt="$(qt_binding)"; then kv deps.qt s "$qt"; else kv deps.qt z; kv deps.pkg_hint.qt s "$(pkg_hint python-pyqt5)"; fi
+  if qt="$(qt_binding)"; then kv deps.qt s "$qt"; else kv deps.qt z; kv deps.pkg_hint.qt s "$(pkg_hint pyqt5)"; fi
 
   # 1b) our own config files (install.sh's output)
   [ -f "$SURFACE/surface.conf" ] && kv base.surface_conf b true || kv base.surface_conf b false
@@ -448,6 +470,13 @@ probe_all() {
 
   has_autostart tray "python3 $SURFACE/usage-tray.py" && kv tray.autostart b true || kv tray.autostart b false
   pgrep -f usage-tray.py >/dev/null 2>&1 && kv tray.running b true || kv tray.running b false
+
+  # 5b) Claude Code status line (live limits without the rate-limited endpoint)
+  local sl
+  sl="$(claude_sl probe 2>/dev/null)"
+  kv statusline.state s "$(sl_field "$sl" state)"
+  kv statusline.settings s "$(sl_field "$sl" settings)"
+  [ "$(sl_field "$sl" installed)" = True ] && kv statusline.installed b true || kv statusline.installed b false
 
   # 6) keys — names only, never values
   kv keys.file s "$ENV_FILE"
@@ -617,7 +646,7 @@ act_tray() { # act_tray autostart(0|1) start(0|1)
   local ta="${1:-0}" ts="${2:-0}"
   [ -f "$SURFACE/usage-tray.py" ] || { warn "tray script not found"; return 1; }
   if ! qt_binding >/dev/null; then
-    warn "tray needs PyQt5 or PySide6 — skipping ($(pkg_hint python-pyqt5))"; return 1
+    warn "tray needs PyQt5 or PySide6 — skipping ($(pkg_hint pyqt5))"; return 1
   fi
   [ "$ta" = 1 ] && add_autostart tray "python3 $SURFACE/usage-tray.py"
   if [ "$ts" = 1 ]; then
@@ -779,6 +808,9 @@ if [ "$MACHINE" = 1 ]; then
   KV_FILE="$(mktemp -t ut-kv.XXXXXX)"
   trap '[ -n "$KV_FILE" ] && rm -f "$KV_FILE"' EXIT
 
+  if [ "$STEP" = statusline ] && [ "$MODE" != probe ]; then
+    claude_sl "$MODE"; exit 0
+  fi
   case "$MODE" in
     probe)
       probe_all
@@ -946,11 +978,13 @@ fi
 if [ "$MODE" = uninstall ]; then
   step "Removing usage-tracker's setup (your data and the repo stay)"
   echo "   This will: stop + remove the systemd service, take the badge out of"
-  echo "   your waybar config and style.css, and drop autostart entries."
+  echo "   your waybar config and style.css, restore Claude Code's status line"
+  echo "   and drop autostart entries."
   echo "   Every file is backed up as <file>$BAK_SUFFIX first."
   ask "Go ahead?" y || { say "nothing changed"; exit 0; }
   act_server_undo
   act_waybar_remove
+  claude_sl undo >/dev/null 2>&1 && say "Claude Code status line: restored"
   remove_autostart widget
   remove_autostart tray
   echo
@@ -975,18 +1009,21 @@ echo "  repo: $ROOT"
 [ "$AUTO" = 1 ] && say "--auto: taking the recommended answer for every question"
 [ "$AUTO" = 0 ] && say "prefer a window over a terminal? ${B}./setup.sh --ui${X}"
 
-DID_SERVER=no; DID_WAYBAR=no; DID_WIDGET=no; DID_TRAY=no; DID_KEYS=0
+DID_SERVER=no; DID_WAYBAR=no; DID_WIDGET=no; DID_TRAY=no; DID_KEYS=0; DID_SL=no
 
 # ── 1) dependencies + base config ──────────────────────────────────────────
-step "1/6  Dependencies & base config"
+step "1/7  Dependencies & base config"
 MISSING=""
 if ! command -v python3 >/dev/null 2>&1; then
   bad "python3 missing — the server can't run"; MISSING="$MISSING python"
 elif python3 -c 'import sys;sys.exit(sys.version_info < (3, 9))' 2>/dev/null; then
   ok "python3 $(python3 -c 'import sys;print("%d.%d"%sys.version_info[:2])' 2>/dev/null)"
 else
-  bad "python3 $(python3 -c 'import sys;print("%d.%d"%sys.version_info[:2])' 2>/dev/null) is too old — the server needs 3.9+"
-  MISSING="$MISSING python"
+  # Hard stop: "too old" followed by "setup verified" (what --auto used to do on 3.8) is a
+  # contradiction. 3.9 is what pyproject.toml, CI and the tests promise.
+  bad "python3 $(python3 -c 'import sys;print("%d.%d"%sys.version_info[:2])' 2>/dev/null) is too old — usage-tracker needs Python 3.9 or newer"
+  echo "   $(pkg_hint python)   (or use a newer python via pyenv / uv)"
+  exit 1
 fi
 for c in curl jq; do
   if command -v "$c" >/dev/null 2>&1; then ok "$c"
@@ -1005,7 +1042,7 @@ fi
 act_base_config || exit 1
 
 # ── 2) server ──────────────────────────────────────────────────────────────
-step "2/6  Server (everything else reads from it)"
+step "2/7  Server (everything else reads from it)"
 echo "   Serves your local usage at $URL. Loopback only — nothing leaves the machine."
 if server_alive; then
   ok "already running"
@@ -1019,7 +1056,7 @@ else
 fi
 
 # ── 3) waybar badge ─────────────────────────────────────────────────────────
-step "3/6  waybar badge (optional)"
+step "3/7  waybar badge (optional)"
 if ! WBAR="$(find_waybar_config)"; then
   warn "no waybar config found — skipping (fine if you don't use waybar)"
 else
@@ -1047,7 +1084,7 @@ else
 fi
 
 # ── 4) widget + tray ────────────────────────────────────────────────────────
-step "4/6  Floating widget & tray icon (optional)"
+step "4/7  Floating widget & tray icon (optional)"
 if [ -n "${BROWSER:-}" ]; then
   echo "   Widget = the panel as a movable, resizable, always-on-top window."
   if ask "Set up the floating widget?" n; then
@@ -1070,12 +1107,39 @@ if [ -f "$SURFACE/usage-tray.py" ]; then
       act_tray "$T_AUTO" "$T_START" && [ "$T_START" = 1 ] && DID_TRAY=yes
     fi
   else
-    warn "tray needs PyQt5 or PySide6 — skipping ($(pkg_hint python-pyqt5))"
+    warn "tray needs PyQt5 or PySide6 — skipping ($(pkg_hint pyqt5))"
   fi
 fi
 
-# ── 5) provider keys ────────────────────────────────────────────────────────
-step "5/6  Hosted provider keys (optional)"
+# ── 5) Claude Code status line ──────────────────────────────────────────────
+step "5/7  Live limits (Claude Code status line)"
+echo "   Claude Code already gets your limit % with every reply. A status line hook"
+echo "   saves it, so the panel shows live limits with no extra request."
+SL_PREVIEW="$(claude_sl preview 2>/dev/null)"
+case "$(sl_field "$SL_PREVIEW" state)" in
+  present) ok "already installed" ; DID_SL=present ;;
+  no-claude|invalid|manual)
+    warn "$(sl_field "$SL_PREVIEW" note)"
+    say "add this to Claude Code's settings.json yourself when ready:"
+    printf '%s' "$SL_PREVIEW" | python3 -c 'import json,sys;[print("   "+l) for l in json.load(sys.stdin).get("snippet",[])]' ;;
+  *)
+    printf '%s' "$SL_PREVIEW" | python3 -c 'import json,sys
+d=json.load(sys.stdin)
+print("   "+d.get("note",""))
+for l in d.get("diff",[]): print("   "+l)'
+    if ask "Write this to $(sl_field "$SL_PREVIEW" target)? (backed up first; undo: ./setup.sh undo statusline)" y; then
+      SL_DO="$(claude_sl do 2>/dev/null)"
+      printf '%s' "$SL_DO" | python3 -c 'import json,sys
+for m in json.load(sys.stdin).get("messages",[]):
+    lvl,_,t=m.partition("|"); print(("   ✓ " if lvl=="ok" else "   ▸ ")+t)'
+      [ "$(sl_field "$SL_DO" ok)" = True ] && DID_SL=yes
+    else
+      warn "skipped — limits may show '—' until the rate-limited fallback answers"
+    fi ;;
+esac
+
+# ── 6) provider keys ────────────────────────────────────────────────────────
+step "6/7  Hosted provider keys (optional)"
 echo "   Claude Code, Codex and local runners (Ollama/LM Studio/Jan) need ${B}no key${X}."
 echo "   A missing key just hides that card — nothing breaks."
 
@@ -1097,7 +1161,7 @@ ask "Open the keys file to add more?" n && { "${EDITOR:-nano}" "$ENV_FILE" || tr
 [ "$DID_KEYS" -gt 0 ] && restart_if_running
 
 # ── 6) verify ───────────────────────────────────────────────────────────────
-step "6/6  Verify (proof, not promises)"
+step "7/7  Verify (proof, not promises)"
 act_verify
 FAIL="$VERIFY_FAIL"
 

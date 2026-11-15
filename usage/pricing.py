@@ -118,10 +118,10 @@ def _build_catalog() -> dict:
         # Dosya yoksa OK — override yok
         pass
     except OSError as e:
-        print(f'warning: price_overrides.json okunamadı: {e}', file=sys.stderr)
+        print(f'warning: price_overrides.json unreadable: {e}', file=sys.stderr)
     except json.JSONDecodeError as e:
         # JSON syntax hatası — uyarı ver ama devam et
-        print(f'warning: price_overrides.json parse hatası: {e}', file=sys.stderr)
+        print(f'warning: price_overrides.json parse error: {e}', file=sys.stderr)
 
     # 3) tier temsilcileri (kısa ad / bilinmeyen sürüm fallback'i)
     def pick(*keys, default=None):

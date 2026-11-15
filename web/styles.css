@@ -36,7 +36,7 @@ body{
 
 /* ── layout ── */
 main{max-width:960px;margin:26px auto;padding:0 20px;display:grid;gap:22px}
-@media(min-width:820px){main{grid-template-columns:1.15fr .85fr;align-items:start}}
+@media(min-width:820px){main{grid-template-columns:.85fr 1.15fr;align-items:start}}  /* v0.6.2: limit kartı ilk (sol, dar), harcama sağda geniş */
 .card{
   background:linear-gradient(180deg,var(--card),var(--card2));
   border:1px solid var(--line); border-radius:var(--r); padding:20px 22px; box-shadow:var(--shadow);
@@ -550,3 +550,10 @@ body.widget .glance-strip,body.glance .glance-strip{display:none}
                    color:var(--muted); padding-top:2px; }
   .models .usd { grid-column:2; grid-row:1; }
 }
+
+/* v0.6.2 — canlı limit yoksa neden + ne yapılacak (tek cümle, çubukların hemen altında) */
+.limit-hint{font-size:12px;line-height:1.5;margin:10px 0 0;padding:8px 10px;border-radius:8px;
+  color:var(--muted2);background:rgba(245,196,81,.07);
+  border-left:3px solid var(--gold)}
+.prov-badge + .prov-badge.exp{margin-left:6px}
+.prov-badge.exp{color:var(--amber);border-color:rgba(251,191,36,.35)}

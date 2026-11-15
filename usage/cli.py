@@ -928,16 +928,19 @@ def collect_doctor(args) -> dict:
     # 7. live Anthropic limits
     try:
         live = (engine.compute_usage() or {}).get('live') or {}
+        hint = (live.get('hint') or {}).get('text')
+        src = {'statusline': 'from the Claude Code status line',
+               'api': 'from the usage endpoint'}.get(live.get('source'), '')
         if live.get('ok'):
             age = live.get('ageSec')
             level = 'warn' if live.get('stale') else 'ok'
             _check(checks, 'live', level, 'Live limits',
-                   f'ok · {int(age)}s old' if age is not None else 'ok',
-                   'The live figures are older than 10 minutes.' if level == 'warn' else None)
+                   (f'ok · {int(age)}s old' if age is not None else 'ok') + (f' · {src}' if src else ''),
+                   (hint or 'The live figures are older than 10 minutes.') if level == 'warn' else None)
         else:
             reason = live.get('error') or live.get('staleReason') or 'no live data'
             _check(checks, 'live', 'warn', 'Live limits', str(reason),
-                   'Percentages fall back to calibration, which can be wrong after a reset.')
+                   hint or 'Percentages fall back to calibration, which can be wrong after a reset.')
     except Exception as exc:
         _check(checks, 'live', 'warn', 'Live limits', f'{type(exc).__name__}: {exc}')
 
@@ -1076,8 +1079,7 @@ def cmd_setup(args) -> int:
         return 0 if result['ok'] else 1
 
     for step in wizard.AUTO_STEPS:
-        titles = i18n.both(f'step_{step}')
-        print(f'\n  {titles[0]}' + (f'   ({titles[1]})' if titles[1] != titles[0] else ''))
+        print(f"\n  {i18n.t(f'step_{step}')}")
         for line in wizard.preview(step).get('lines', []):
             print(f'    │ {line}' if line else '    │')
         if step == 'verify' or _ask(i18n.t('setup_apply'), True):
@@ -1256,6 +1258,31 @@ def cmd_kanit(args) -> int:
     return 0
 
 
+def load_statusline_module():
+    """`surface/statusline.py`'yi bulunduğu yerden yükle: kaynak ağacı, AUR, wheel
+    (`usage/_res/surface`) ya da PyInstaller paketi. Tek dosya, dört kurulum biçimi."""
+    import importlib.util
+    for base in (_paths.resource_dir(), Path(__file__).resolve().parent.parent):
+        path = base / 'surface' / 'statusline.py'
+        if path.is_file():
+            spec = importlib.util.spec_from_file_location('ut_statusline', path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod
+    return None
+
+
+def cmd_statusline(args) -> int:
+    """Durum satırı her çizimde koşar: hiçbir koşulda hata basmaz, 0 döner."""
+    try:
+        mod = load_statusline_module()
+        if mod is not None:
+            mod.main(['--wrap'] if args.wrap else [])
+    except Exception:
+        pass
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = _Parser(prog='usage-tracker',
                      description='AI usage, limits and real spend — from the command line.',
@@ -1360,6 +1387,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_kanit.add_argument('--json', action='store_true')
     p_kanit.add_argument('--no-codex', action='store_true', help='leave out the experimental Codex part')
     p_kanit.set_defaults(func=cmd_kanit)
+
+    p_sl = subparsers.add_parser(
+        'statusline', help='Claude Code status line hook (reads stdin; set up by `setup`)')
+    p_sl.add_argument('--wrap', action='store_true',
+                      help='also run the status line command this one replaced')
+    p_sl.set_defaults(func=cmd_statusline)
 
     p_panel = subparsers.add_parser(
         'panel', help='open the panel in a browser, starting the server if needed')

@@ -30,6 +30,7 @@ a = Analysis(                                    # noqa: F821
         (str(ROOT / 'web'), 'web'),
         (str(ROOT / 'data'), 'data'),
         (str(ROOT / 'price_overrides.json'), '.'),
+        (str(ROOT / 'surface' / 'statusline.py'), 'surface'),   # `usage-tracker statusline`
     ],
     # `usage.cli` yalnızca `server.main()` içinde, çalışma anında import ediliyor (CLI alt
     # komutu verilmedikçe yüklenmesin diye). Analiz bunu bulur ama bulamazsa hata sessizdir:

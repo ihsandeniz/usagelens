@@ -19,25 +19,28 @@ def _oku(ad):
 class BelgelerKodlaAyni(unittest.TestCase):
     def test_rozet_bicimi_gercek(self):
         # Gerçek çıktı `◐ S13% W18%`; `◐ NN%` kalmamalı. CLI besleyicileri ayrı.
-        for ad in ('README.md', 'README.tr.md', 'PUBLISH.md'):
+        for ad in ('README.md', 'docs/GUIDE.md', 'README.tr.md', 'PUBLISH.md'):
             with self.subTest(ad):
                 self.assertNotIn('◐ NN%', _oku(ad))
                 self.assertIn('◐ S', _oku(ad))
 
     def test_iki_onbellek_fiyati_anlatilir(self):
-        self.assertIn('1-hour cache writes', _oku('README.md'))
+        self.assertIn('1-hour cache writes', _oku('docs/GUIDE.md'))
         self.assertIn('1 saatlik önbellek', _oku('README.tr.md'))
 
     def test_limit_kaynagi_status_line_once(self):
-        self.assertRegex(_oku('README.md'), r'\*\*Limits: real[^\n]*status line')
+        self.assertRegex(_oku('docs/GUIDE.md'), r'\*\*Limits: real[^\n]*status line')
         self.assertRegex(_oku('README.tr.md'), r'\*\*Limitler[^\n]*durum satır')
 
     def test_codex_olculemeyen_sapma_yazili(self):
-        self.assertIn('token_usage_record', _oku('README.md'))
+        self.assertIn('token_usage_record', _oku('docs/GUIDE.md'))
         self.assertIn('token_usage_record', _oku('README.tr.md'))
 
     def test_pypi_vaadi_yok(self):
-        self.assertIn('Not published to PyPI', _oku('pyproject.toml'))
+        # v0.6.2: dağıtım adı `usagelens`; PyPI'ye yükleme hâlâ yok (hesap ihsan'da) —
+        # pyproject bunu söylemeli, README "pip install usagelens" vaat etmemeli.
+        self.assertIn('Not uploaded to PyPI yet', _oku('pyproject.toml'))
+        self.assertNotIn('pip install usagelens', _oku('README.md'))
 
     def test_uyari_kodlari_belgeli(self):
         self.assertIn('warningCodes', _oku('docs/WIRE.md'))

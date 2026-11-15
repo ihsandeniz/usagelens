@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>usage-tracker · Claude kullanım & harcama</title>
-<link rel="stylesheet" href="/styles.css?v=9">
+<title>usagelens · Claude usage, limits &amp; spend</title>
+<link rel="stylesheet" href="/styles.css?v=10">
 </head>
 <body>
 <header class="topbar">
   <div class="brand">
     <span class="dot"></span>
-    <h1>usage&#8203;<em>tracker</em></h1>
-    <span class="tag">Pane for Linux · <span id="ver">—</span></span>
+    <h1>usage&#8203;<em>lens</em></h1>
+    <span class="tag">AI usage · limits · spend · <span id="ver">—</span></span>
   </div>
   <div class="meta">
     <span id="updated" class="muted">—</span>
-    <button id="lang" class="txtbtn" title="Türkçe / English">TR</button>
+    <button id="lang" class="txtbtn" title="English / Türkçe">TR</button>
     <button id="refresh" class="ghost" data-i18n-title="refresh" data-i18n-aria="refresh">⟳</button>
   </div>
 </header>
@@ -24,32 +24,50 @@
   <!-- ── GLANCE MODE (FAZ 2.5) ───────────────────────────── -->
   <div id="glance-content" class="glance-root"></div>
 
-  <!-- ── TEK BAKIŞ ŞERİDİ (FAZ 5c) ───────────────────────── -->
-  <section class="card glance-strip">
+  <!-- ── LİMİTLER (FAZ 0) — v0.6.2: en üstte; ilk soru "ne kadar kaldı" ────────────────────────────────── -->
+  <section class="card limits">
     <div class="card-head">
-      <h2><span>📊</span> <span data-i18n="overview">Tek Bakış</span></h2>
-      <span id="gstrip-count" class="pill muted">—</span>
+      <h2><span>⏱️</span> <span data-i18n="limits">Rate Limits</span></h2>
+      <span id="calib-flag" class="pill"></span>
     </div>
-    <div id="gstrip" class="gstrip"></div>
+    <div id="limit-bars" aria-live="polite"></div>
+    <p id="limit-hint" class="limit-hint" hidden></p>
+    <div id="limit-kutu" aria-live="polite"></div>
+    <details class="calib">
+      <summary><span data-i18n="calibration">Calibration (backup)</span> — <span data-i18n="calibWhen">used when live limits are unavailable</span></summary>
+      <p class="note" data-i18n-html="calibNote"></p>
+      <div class="form-grid">
+        <label><span data-i18n="cSessPct">Session %</span><input type="number" id="c-sess-pct" min="0" max="100" step="0.1" placeholder="e.g. 62" data-i18n-ph="phPct62"></label>
+        <label><span data-i18n="cSessReset">Session reset (HH:MM)</span><input type="time" id="c-sess-reset"></label>
+        <label><span data-i18n="cWeekPct">Weekly (all) %</span><input type="number" id="c-week-pct" min="0" max="100" step="0.1" placeholder="e.g. 40" data-i18n-ph="phPct40"></label>
+        <label><span data-i18n="cWeekReset">Weekly reset (day+hour)</span><input type="datetime-local" id="c-week-reset"></label>
+        <label><span data-i18n="cModelName">Model name</span><input type="text" id="c-model-name" placeholder="opus" maxlength="20"></label>
+        <label><span data-i18n="cModelPct">Model %</span><input type="number" id="c-model-pct" min="0" max="100" step="0.1" placeholder="e.g. 55" data-i18n-ph="phPct55"></label>
+      </div>
+      <div class="form-actions">
+        <button id="calib-save" class="primary" data-i18n="calibrateBtn">Calibrate</button>
+        <span id="calib-msg" class="muted"></span>
+      </div>
+    </details>
   </section>
 
   <!-- ── HARCAMA (FAZ 1) ─────────────────────────────────── -->
   <section class="card spend">
     <div class="card-head">
-      <h2><span>💸</span> <span data-i18n="spend">Gerçek Harcama</span></h2>
+      <h2><span>💸</span> <span data-i18n="spend">Real Spending</span></h2>
       <span id="price-flag" class="pill"></span>
     </div>
     <div class="stat-row" aria-live="polite">
-      <div class="stat"><div class="stat-label" data-i18n="today">Bugün</div><div class="stat-val" id="s-today">—</div></div>
-      <div class="stat"><div class="stat-label" data-i18n="yday">Dün</div><div class="stat-val muted2" id="s-yday">—</div></div>
-      <div class="stat big"><div class="stat-label" data-i18n="total">Son 30 gün</div><div class="stat-val gold" id="s-total">—</div></div>
+      <div class="stat"><div class="stat-label" data-i18n="today">Today</div><div class="stat-val" id="s-today">—</div></div>
+      <div class="stat"><div class="stat-label" data-i18n="yday">Yesterday</div><div class="stat-val muted2" id="s-yday">—</div></div>
+      <div class="stat big"><div class="stat-label" data-i18n="total">Last 30 days</div><div class="stat-val gold" id="s-total">—</div></div>
     </div>
     <div class="spark-wrap">
-      <div class="spark-head"><span data-i18n="daily">Günlük harcama (30g)</span><span id="spark-max" class="muted"></span></div>
+      <div class="spark-head"><span data-i18n="daily">Daily spending (30d)</span><span id="spark-max" class="muted"></span></div>
       <div class="spark" id="spark"></div>
     </div>
     <table class="models">
-      <thead><tr><th>Model</th><th data-i18n="source">Kaynak</th><th class="r">Token (out/in/cache)</th><th class="r">$</th></tr></thead>
+      <thead><tr><th>Model</th><th data-i18n="source">Source</th><th class="r">Token (out/in/cache)</th><th class="r">$</th></tr></thead>
       <tbody id="model-rows"></tbody>
     </table>
     <!-- Çevrilmiş karşılık ikinci sıradadır ve kurunu yanında taşır (FAZ 6/B) -->
@@ -57,60 +75,43 @@
     <p id="spend-note" class="note"></p>
   </section>
 
-  <!-- ── LİMİTLER (FAZ 0) ────────────────────────────────── -->
-  <section class="card limits">
+  <!-- ── TEK BAKIŞ ŞERİDİ (FAZ 5c) ───────────────────────── -->
+  <section class="card glance-strip">
     <div class="card-head">
-      <h2><span>⏱️</span> <span data-i18n="limits">Claude Limitleri</span></h2>
-      <span id="calib-flag" class="pill"></span>
+      <h2><span>📊</span> <span data-i18n="overview">Overview</span></h2>
+      <span id="gstrip-count" class="pill muted">—</span>
     </div>
-    <div id="limit-bars" aria-live="polite"></div>
-    <div id="limit-kutu" aria-live="polite"></div>
-    <details class="calib">
-      <summary><span data-i18n="calibration">Kalibrasyon (yedek)</span> — <span data-i18n="calibWhen">canlı limit alınamazsa</span></summary>
-      <p class="note" data-i18n-html="calibNote"></p>
-      <div class="form-grid">
-        <label><span data-i18n="cSessPct">Oturum %</span><input type="number" id="c-sess-pct" min="0" max="100" step="0.1" placeholder="ör. 62" data-i18n-ph="phPct62"></label>
-        <label><span data-i18n="cSessReset">Oturum reset (saat:dk)</span><input type="time" id="c-sess-reset"></label>
-        <label><span data-i18n="cWeekPct">Haftalık (tüm) %</span><input type="number" id="c-week-pct" min="0" max="100" step="0.1" placeholder="ör. 40" data-i18n-ph="phPct40"></label>
-        <label><span data-i18n="cWeekReset">Haftalık reset (gün+saat)</span><input type="datetime-local" id="c-week-reset"></label>
-        <label><span data-i18n="cModelName">Model adı</span><input type="text" id="c-model-name" placeholder="opus" maxlength="20"></label>
-        <label><span data-i18n="cModelPct">Model %</span><input type="number" id="c-model-pct" min="0" max="100" step="0.1" placeholder="ör. 55" data-i18n-ph="phPct55"></label>
-      </div>
-      <div class="form-actions">
-        <button id="calib-save" class="primary" data-i18n="calibrateBtn">Kalibre et</button>
-        <span id="calib-msg" class="muted"></span>
-      </div>
-    </details>
+    <div id="gstrip" class="gstrip"></div>
   </section>
 
   <!-- ── BAĞLAM PENCERESİ (oturum başına /context dökümü) ─────────────── -->
   <section class="card context-section">
     <div class="card-head">
-      <h2><span>🧠</span> <span data-i18n="ctxTitle">Bağlam Penceresi</span></h2>
+      <h2><span>🧠</span> <span data-i18n="ctxTitle">Context Window</span></h2>
       <span id="ctx-count" class="pill muted">—</span>
     </div>
     <div id="ctx-rows" aria-live="polite"></div>
-    <p class="note" data-i18n="ctxNote">Her açık Claude Code oturumu. Toplam son yanıttan anlık; kırılım oturumun bir kopyasında /context ile ölçülür (kaynak oturuma yazılmaz). Kesikli çizgi = otomatik sıkıştırma eşiği.</p>
+    <p class="note" data-i18n="ctxNote">Every open Claude Code session. The total is live from the last reply; the breakdown is measured with /context on a fork of the session (the session itself is never written). Dashed line = auto-compact point.</p>
   </section>
 
   <!-- ── ÇOK-SAĞLAYICI (FAZ 2) + GRUPLAMA/ARAMA (FAZ 3 §3) ───────────────────────────── -->
   <section class="card providers">
     <div class="card-head">
-      <h2><span>🌐</span> <span data-i18n="otherProviders">Diğer Sağlayıcılar</span></h2>
+      <h2><span>🌐</span> <span data-i18n="otherProviders">Other Providers</span></h2>
       <span id="prov-flag" class="pill">—</span>
     </div>
 
     <!-- Arama kutusu (FAZ 3 §3) -->
     <div class="prov-search-wrap">
-      <input type="text" id="prov-search" class="prov-search" placeholder="Sağlayıcı adı ara..." data-i18n-ph="provSearchPlaceholder">
+      <input type="text" id="prov-search" class="prov-search" placeholder="Search provider name..." data-i18n-ph="provSearchPlaceholder">
     </div>
 
     <!-- Kategori sekmeleri (FAZ 3 §3) -->
     <div class="prov-tabs">
-      <button class="prov-tab active" data-tab="all" data-i18n="provTabAll">Hepsi</button>
-      <button class="prov-tab" data-tab="active" data-i18n="provTabActive">Aktif</button>
-      <button class="prov-tab" data-tab="api" data-i18n="provTabApi">API anahtarı</button>
-      <button class="prov-tab" data-tab="local" data-i18n="provTabLocal">Diskten</button>
+      <button class="prov-tab active" data-tab="all" data-i18n="provTabAll">All</button>
+      <button class="prov-tab" data-tab="active" data-i18n="provTabActive">Active</button>
+      <button class="prov-tab" data-tab="api" data-i18n="provTabApi">API key</button>
+      <button class="prov-tab" data-tab="local" data-i18n="provTabLocal">On disk</button>
     </div>
 
     <!-- Ana kart ızgarası -->
@@ -126,39 +127,39 @@
     <!-- Kurtarma düğmesi bilinçli: kaydedilmiş bir arama, kullanıcının BU oturumda
          yazmadığı hâlde ızgarayı boşaltabiliyor. Sebebi görünür, çıkışı tek tık. -->
     <div id="prov-no-match" class="muted" style="display:none; text-align:center; padding:20px;">
-      <p data-i18n="provNoMatch">Eşleşme yok</p>
-      <button id="prov-clear-search" class="btn" data-i18n="provClearSearch">Aramayı temizle</button>
+      <p data-i18n="provNoMatch">No matches</p>
+      <button id="prov-clear-search" class="btn" data-i18n="provClearSearch">Clear the search</button>
     </div>
 
-    <p class="note" data-i18n="provNote">Yapılandırılmamış sağlayıcı kart açmaz. OpenRouter=gerçek $ · Codex=abonelik (API-eşdeğeri $) · Ollama=yerel/ücretsiz.</p>
+    <p class="note" data-i18n="provNote">An unconfigured provider opens no card. OpenRouter=real $ · Codex=subscription (API-equivalent $) · Ollama=local/free.</p>
   </section>
 
   <!-- ── AYARLAR (FAZ 6/B) ──────────────────────────────── -->
   <section class="card settings-section">
     <div class="card-head">
-      <h2><span>⚙️</span> <span data-i18n="settings">Ayarlar</span></h2>
+      <h2><span>⚙️</span> <span data-i18n="settings">Settings</span></h2>
       <span id="settings-msg" class="pill muted">—</span>
     </div>
 
     <div class="set-grid">
       <label class="set-field">
-        <span data-i18n="setWarn">Uyarı eşiği %</span>
+        <span data-i18n="setWarn">Warn threshold %</span>
         <input id="set-warn" type="number" min="1" max="99" step="1" inputmode="numeric">
       </label>
       <label class="set-field">
-        <span data-i18n="setCrit">Kritik eşik %</span>
+        <span data-i18n="setCrit">Critical threshold %</span>
         <input id="set-crit" type="number" min="2" max="100" step="1" inputmode="numeric">
       </label>
       <label class="set-field">
-        <span data-i18n="setRefresh">Yenileme (sn)</span>
+        <span data-i18n="setRefresh">Refresh (s)</span>
         <input id="set-refresh" type="number" min="5" max="3600" step="5" inputmode="numeric">
       </label>
     </div>
-    <p class="note" data-i18n="setThreshNote">Eşik tek yerde: panel, waybar rozeti, tepsi ve <code>guard</code> komutu aynı çifti okur.</p>
+    <p class="note" data-i18n="setThreshNote">One place for the threshold: the panel, the waybar badge, the tray and the `guard` command all read this pair.</p>
 
     <div class="set-grid">
       <label class="set-field">
-        <span data-i18n="setCurrency">Görüntüleme para birimi</span>
+        <span data-i18n="setCurrency">Display currency</span>
         <select id="set-currency">
           <option value="USD">USD ($)</option>
           <option value="TRY">TRY (₺)</option>
@@ -172,31 +173,31 @@
         <input id="set-rate" type="number" min="0" step="0.0001" inputmode="decimal">
       </label>
     </div>
-    <p class="note" data-i18n="setRateNote">Kuru sen girersin — uygulama hiçbir yerden kur çekmez. Çevrilmiş tutar dolarların <em>yanında</em>, kuru ve girdiğin tarihle gösterilir.</p>
+    <p class="note" data-i18n="setRateNote">You enter the rate — the app never fetches one. The converted amount is shown beside the dollars, with its rate and the day you entered it.</p>
 
     <div class="set-actions">
-      <button id="settings-save" class="btn" data-i18n="setSave">Kaydet</button>
+      <button id="settings-save" class="btn" data-i18n="setSave">Save</button>
     </div>
 
     <details class="set-keys">
-      <summary data-i18n="setKeys">API anahtarları</summary>
+      <summary data-i18n="setKeys">API keys</summary>
       <div id="settings-keys" class="set-keys-list"></div>
-      <p class="note" data-i18n="setKeysNote">Bu sunucu anahtar yazmaz ve anahtarın değerini hiçbir zaman göstermez — yalnız ortam değişkeninin adını ve dolu/boş durumunu. Anahtar eklemek için: <code>./setup.sh --ui</code> → “keys” adımı.</p>
+      <p class="note" data-i18n="setKeysNote">This server never writes keys and never shows their value — only the environment variable name and whether it is set. To add a key: ./setup.sh --ui → step "keys".</p>
     </details>
   </section>
 
   <!-- ── GÖRÜNÜM AYARLARI (FAZ 4a) ──────────────────────── -->
   <section class="card view-section">
     <div class="card-head">
-      <h2><span>👁️</span> <span data-i18n="view">Görünüm</span></h2>
+      <h2><span>👁️</span> <span data-i18n="view">View</span></h2>
       <span id="view-save-msg" class="pill muted">—</span>
     </div>
-    <p class="note" data-i18n="viewNote">İşaretli sağlayıcıları göster; işaretsiz olanlar panel/waybar/widget'tan gizlenir.</p>
+    <p class="note" data-i18n="viewNote">Show the checked providers; unchecked ones are hidden from the panel/waybar/widget.</p>
     <div id="view-providers" class="view-providers-list"></div>
   </section>
 </main>
 
-<footer><span class="muted"><span id="footer-addr">127.0.0.1:8770</span> · stdlib-only · <span data-i18n="footerSrc">kaynak: ~/.claude/projects + ~/.codex + OpenRouter API (salt-okunur)</span></span></footer>
-<script src="/app.js?v=14"></script>
+<footer><span class="muted"><span id="footer-addr">127.0.0.1:8770</span> · stdlib-only · <span data-i18n="footerSrc">source: ~/.claude/projects + ~/.codex + OpenRouter API (read-only)</span></span></footer>
+<script src="/app.js?v=15"></script>
 </body>
 </html>

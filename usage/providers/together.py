@@ -34,9 +34,9 @@ BASE = 'https://api.together.xyz'
 PROBE_PATH = '/v1/models'
 CACHE_TTL = 90.0
 
-NO_USAGE_NOTE = ('Anahtar geçerli. Together AI hesap/bakiye/kullanım ucu yayınlamıyor '
-                 '(2026-08-11: 7 aday yol ölçüldü, hepsi 404) — bu yüzden burada rakam yok. '
-                 'Harcamanı together.ai panelinden görebilirsin.')
+NO_USAGE_NOTE = ('Key valid. Together AI publishes no account/balance/usage endpoint '
+                 '(2026-08-11: 7 candidate paths measured, all 404) — so no numbers here. '
+                 'You can see your spend on the together.ai dashboard.')
 
 _LOCK = threading.Lock()
 _CACHE = None
@@ -67,7 +67,7 @@ def _build(days: int) -> dict:
     except urllib.error.HTTPError as e:
         if e.code in (401, 403):
             return {**card, 'status': 'error',
-                    'error': f'HTTP {e.code} (geçersiz/yetersiz key)'}
+                    'error': f'HTTP {e.code} (invalid/insufficient key)'}
         return {**card, 'status': 'error', 'error': f'HTTP {e.code}'}
     except Exception as e:
         return {**card, 'status': 'error', 'error': f'{type(e).__name__}'}

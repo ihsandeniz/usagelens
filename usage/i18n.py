@@ -5,8 +5,8 @@ kalır (terminal çıktısının her makinede birebir aynı olması bir özellik
 raporu çevrilirse aranamaz). Çevrilen şey yalnızca **kullanıcının bir sonraki adımı**:
 açılış penceresi, sihirbazın soruları, "şimdi ne oldu" cümleleri.
 
-Neden iki dil birden basılıyor: makinenin dilini yanlış tahmin etmenin bedeli, iki satır
-fazladan metinden büyük. Windows'ta çift tıklayan biri için o pencere tek yönlendirme.
+Tek dil basılır (v0.6.2): varsayılan İngilizce, Türkçe yalnız seçilince. Karışık dil
+yabancı kullanıcıda güven kırıyordu — `both()` bu yüzden artık tek satır döndürür.
 
 Dil seçimi: `UT_LANG=tr|en` > Windows kullanıcı arayüzü dili > `LANG`/`LC_ALL` > İngilizce.
 """
@@ -107,6 +107,10 @@ MESSAGES = {
         'en': 'Add a shortcut that opens the panel',
         'tr': 'Paneli açan bir kısayol ekle',
     },
+    'step_statusline': {
+        'en': 'Show live limits (Claude Code status line)',
+        'tr': 'Canlı limitleri göster (Claude Code durum satırı)',
+    },
     'step_keys': {
         'en': 'Provider API keys (optional)',
         'tr': 'Sağlayıcı API anahtarları (isteğe bağlı)',
@@ -149,8 +153,10 @@ def t(key: str, lang=None, **fmt) -> str:
 
 
 def both(key: str, **fmt) -> list:
-    """Önce makinenin dili, sonra öteki. Bir kullanıcının okuyamadığı tek satır, hiç
-    yazılmamış satırdır."""
-    primary = language()
-    other = 'en' if primary == 'tr' else 'tr'
-    return [t(key, primary, **fmt), t(key, other, **fmt)]
+    """Seçili dildeki satır, tek elemanlı liste (çağıranlar satır satır basıyor).
+
+    Eskiden iki dil birden basılıyordu ("makinenin dilini yanlış tahmin etmenin bedeli iki
+    satırdan büyük"). v0.6.2 değerlendirmesinde yabancı kullanıcı İngilizce ekranda Türkçe
+    satır gördü — karışık dil güven kırıyor. Kural artık: varsayılan İngilizce, Türkçe yalnız
+    `UT_LANG=tr` ya da Türkçe sistem dili seçiliyse. Ad geriye uyum için kaldı."""
+    return [t(key, **fmt)]

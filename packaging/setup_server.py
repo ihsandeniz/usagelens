@@ -59,8 +59,8 @@ MIME = {'.html': 'text/html; charset=utf-8',
         '.js': 'application/javascript; charset=utf-8',
         '.css': 'text/css; charset=utf-8'}
 
-STEPS = {'base', 'server', 'waybar', 'widget', 'tray', 'keys', 'verify'}
-PREVIEWABLE = {'server', 'waybar', 'widget', 'tray', 'keys'}
+STEPS = {'base', 'server', 'waybar', 'widget', 'tray', 'statusline', 'keys', 'verify'}
+PREVIEWABLE = {'server', 'waybar', 'widget', 'tray', 'statusline', 'keys'}
 KEY_RE = re.compile(r'[A-Z][A-Z0-9_]{2,63}')
 MAX_BODY = 16 * 1024
 STEP_TIMEOUT = 180          # a systemd install + server poll can take a while

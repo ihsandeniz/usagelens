@@ -13,9 +13,12 @@ CONF="$SURFACE/surface.conf"
 ENV_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/usage-tracker"
 ENV_FILE="$ENV_DIR/env"
 
-say()  { printf '\033[36m▸\033[0m %s\n' "$*"; }
-warn() { printf '\033[33m!\033[0m %s\n' "$*"; }
-ok()   { printf '\033[32m✓\033[0m %s\n' "$*"; }
+# Colour only on a terminal: piped into a log (setup.sh, CI) the escapes showed up raw.
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then _C=$'\033[36m'; _Y=$'\033[33m'; _G=$'\033[32m'; _X=$'\033[0m'
+else _C=""; _Y=""; _G=""; _X=""; fi
+say()  { printf '%s▸%s %s\n' "$_C" "$_X" "$*"; }
+warn() { printf '%s!%s %s\n' "$_Y" "$_X" "$*"; }
+ok()   { printf '%s✓%s %s\n' "$_G" "$_X" "$*"; }
 
 echo "usage-tracker installer"
 echo "  repo: $ROOT"

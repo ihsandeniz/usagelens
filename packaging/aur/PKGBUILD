@@ -1,20 +1,24 @@
-# Maintainer: TODO — the AUR account owner (name <email>), decided at publish time
+# Maintainer: TODO — the AUR account owner (name <email>), set at publish time
 # DRAFT — not on the AUR. Nothing here has been uploaded, tagged or signed.
 #
-# Before publishing:
-#   1. tag v$pkgver on GitHub (VERSION lives in server.py; CI checks the tag against it)
-#   2. `updpkgsums` — replaces SKIP with the tarball's real sha256
-#   3. `makepkg --printsrcinfo > .SRCINFO`, `namcap PKGBUILD *.pkg.tar.zst`
-#   4. push to ssh://aur@aur.archlinux.org/usage-tracker.git (needs an AUR account + SSH key)
+# The package name lives in ONE place: `_name` below. Change it there and everything follows
+# (pkgname, install dir, the command in /usr/bin). Decided 2026-11-15: `usagelens`; the
+# repository stays ihsandeniz/usage-tracker and `usage-tracker` stays as a second command.
 #
-# Layout: the repo tree goes to /usr/lib/usage-tracker unchanged. The code already expects a
+# Before publishing (the account owner does these — see reports/2026-11-15-usage-tracker-v062):
+#   1. tag v$pkgver on GitHub (VERSION lives in server.py; CI checks the tag against it)
+#   2. `updpkgsums` — replaces SKIP with the GitHub tarball's real sha256
+#   3. `makepkg --printsrcinfo > .SRCINFO`, `namcap PKGBUILD *.pkg.tar.zst`
+#   4. git push to ssh://aur@aur.archlinux.org/$pkgname.git (AUR account + SSH key)
+#
+# Layout: the repo tree goes to /usr/lib/$_name unchanged. The code already expects a
 # read-only install dir (`usage/platform.py:resource_dir()` reads web/, data/ and
 # price_overrides.json next to `usage/`); everything the user owns goes to
-# ~/.local/state, ~/.config and ~/.cache. So no patching is needed here — unlike the wheel
-# (see pyproject.toml).
+# ~/.local/state, ~/.config and ~/.cache. So no patching is needed here.
 
-pkgname=usage-tracker
-pkgver=0.6.1
+_name=usagelens
+pkgname=$_name
+pkgver=0.6.2
 pkgrel=1
 pkgdesc='Claude / AI usage, limits and real spend on your desktop — panel, waybar badge, CLI (stdlib only)'
 arch=('any')
@@ -26,14 +30,17 @@ optdepends=(
   'jq: waybar badge feeder (surface/waybar-usage.sh)'
   'chromium: floating widget (any Chromium-family browser works)'
   'python-pyqt5: system tray icon (surface/usage-tray.py)'
-  'libnotify: desktop notifications for `usage-tracker watch --notify`'
+  'libnotify: desktop notifications for `usagelens watch --notify`'
 )
-source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+provides=('usage-tracker')
+conflicts=('usage-tracker' "$_name-git")
+source=("$_name-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('SKIP')
+_srcdir="usage-tracker-$pkgver"     # GitHub names the tarball's top dir after the REPO
 
 package() {
-  cd "$srcdir/$pkgname-$pkgver"
-  local lib="$pkgdir/usr/lib/$pkgname"
+  cd "$srcdir/$_srcdir"
+  local lib="$pkgdir/usr/lib/$_name"
 
   install -d "$lib"
   cp -r --no-preserve=ownership usage web data surface "$lib/"
@@ -45,14 +52,16 @@ package() {
   find "$lib" -name '__pycache__' -prune -exec rm -rf {} +
   rm -f "$lib/surface/surface.conf"
 
-  # One command for every surface: `usage-tracker`, `usage-tracker kanit`, `… guard`, …
+  # One command for every surface: `usagelens`, `usagelens setup`, `… guard`, …
+  # `usage-tracker` stays as the original name (docs, scripts and old installs use it).
   install -d "$pkgdir/usr/bin"
-  printf '#!/bin/sh\nexec /usr/bin/python3 /usr/lib/%s/server.py "$@"\n' "$pkgname" \
-    > "$pkgdir/usr/bin/$pkgname"
-  chmod 755 "$pkgdir/usr/bin/$pkgname"
+  printf '#!/bin/sh\nexec /usr/bin/python3 /usr/lib/%s/server.py "$@"\n' "$_name" \
+    > "$pkgdir/usr/bin/$_name"
+  chmod 755 "$pkgdir/usr/bin/$_name"
+  [ "$_name" = usage-tracker ] || ln -s "$_name" "$pkgdir/usr/bin/usage-tracker"
 
   # systemd --user unit (opt-in: `systemctl --user enable --now usage-tracker`)
-  sed -e "s|@@ROOT@@|/usr/lib/$pkgname|g" -e "s|@@PYTHON@@|/usr/bin/python3|g" \
+  sed -e "s|@@ROOT@@|/usr/lib/$_name|g" -e "s|@@PYTHON@@|/usr/bin/python3|g" \
     packaging/usage-tracker.service.in > usage-tracker.service
   install -Dm644 usage-tracker.service -t "$pkgdir/usr/lib/systemd/user/"
 

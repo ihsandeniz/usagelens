@@ -169,7 +169,7 @@ def _parse_file(fp: Path):
                 try:
                     o = json.loads(line)
                 except ValueError as e:
-                    print(f'Provider {PROVIDER_ID}: Bozuk JSON satırı {fp}:{line_idx}: {e}', file=sys.stderr)
+                    print(f'Provider {PROVIDER_ID}: broken JSON line {fp}:{line_idx}: {e}', file=sys.stderr)
                     continue
                 payload = o.get('payload')
                 if not isinstance(payload, dict) or payload.get('type') != 'token_count':
@@ -467,10 +467,10 @@ def collect(days: int = 30) -> dict:
                         key=lambda x: x['usd'], reverse=True)
 
     if truncated_reason == 'files':
-        trunc_note = f' ⚠️ Toplamda en yeni {MAX_FILES} oturum var, daha eskileri sayılmadı.'
+        trunc_note = f' ⚠️ Only the newest {MAX_FILES} sessions are counted; older ones were skipped.'
     elif truncated_reason == 'lines':
-        trunc_note = (f' ⚠️ En az bir oturum günlüğü {MAX_LINES_PER_FILE} satırda kesildi — '
-                      f'gösterilen toplam EKSİK.')
+        trunc_note = (f' ⚠️ At least one session log was cut at {MAX_LINES_PER_FILE} lines — '
+                      f'the shown total is INCOMPLETE.')
     else:
         trunc_note = ''
 
@@ -485,21 +485,21 @@ def collect(days: int = 30) -> dict:
         dead_bars = [b for b in limits.values() if b and b.get('expired')]
         if live_bars:
             oldest = max(b['ageSec'] for b in live_bars)
-            limit_note = (f' Limit yüzdesi Codex\'in kendi yanıtından ({_fmt_age(oldest)} önceki '
-                          f'turn); pencere içinde yalnız artar, yani ALT SINIR.')
+            limit_note = (f' Limit % comes from Codex\'s own response (turn {_fmt_age(oldest)} ago); '
+                          f'it only rises within a window, so it is a LOWER BOUND.')
         if dead_bars:
-            limit_note += (' ⚠️ En az bir pencere son ölçümden sonra sıfırlandı — o bar '
-                           '"bilinmiyor"; 0 yazmak yeni pencereyi ölçmüş gibi olurdu.')
-            warnings.append('Bir limit penceresi son ölçümden sonra sıfırlandı — o bar '
-                            '"bilinmiyor", sıfır değil.')
+            limit_note += (' ⚠️ At least one window reset after the last reading — that bar is '
+                           '"unknown"; writing 0 would pretend the new window was measured.')
+            warnings.append('A limit window reset after the last reading — that bar is '
+                            '"unknown", not zero.')
             warning_codes.append({'code': 'windowReset', 'n': 0})
     if truncated_reason == 'files':
-        warnings.append(f'Toplamda en yeni {MAX_FILES} oturum var, daha eskileri sayılmadı. '
-                        f'Limit yüzdesi etkilenmez.')
+        warnings.append(f'Only the newest {MAX_FILES} sessions are counted; older ones were skipped. '
+                        f'Limit % is unaffected.')
         warning_codes.append({'code': 'filesCap', 'n': MAX_FILES})
     elif truncated_reason == 'lines':
-        warnings.append(f'En az bir oturum günlüğü {MAX_LINES_PER_FILE} satırda kesildi — '
-                        f'token/$ toplamı EKSİK.')
+        warnings.append(f'At least one session log was cut at {MAX_LINES_PER_FILE} lines — '
+                        f'token/$ total is INCOMPLETE.')
         warning_codes.append({'code': 'linesCap', 'n': MAX_LINES_PER_FILE})
 
     return {
@@ -523,9 +523,9 @@ def collect(days: int = 30) -> dict:
         'byModel': model_list,
         'byDay': day_list,
         'usdSource': 'estimate' if ('estimate' in sources or 'unknown' in sources) else 'catalog',
-        'note': ('ChatGPT aboneliği — $ API-eşdeğeri maliyettir (gerçek fatura sabit abonelik). '
+        'note': ('ChatGPT subscription — $ is the API-equivalent cost (the real bill is a flat subscription). '
                  if auth_mode == 'chatgpt' else '') +
-                'Token, rollout günlüklerindeki turn deltalarından; reasoning output içinde.' +
+                'Tokens come from per-turn deltas in rollout logs; reasoning is included in output.' +
                 limit_note + trunc_note,
     }
 
@@ -536,12 +536,12 @@ def _fmt_age(seconds) -> str:
     except (TypeError, ValueError):
         return '?'
     if total < 60:
-        return f'{total} sn'
+        return f'{total} s'
     if total < 3600:
-        return f'{total // 60} dk'
+        return f'{total // 60} min'
     if total < 86400:
-        return f'{total // 3600} sa'
-    return f'{total // 86400} gün'
+        return f'{total // 3600} h'
+    return f'{total // 86400} d'
 
 
 if __name__ == '__main__':

@@ -36,6 +36,13 @@ def _collect_single(mod, days):
     return mod.collect(days)
 
 
+#: Başarılı bir yanıtı hiç görülmemiş adaptörler (anahtarı olan kimse doğrulamadı): kartları
+#: `experimental: True` taşır, panel rozetini gösterir, belge onları ayrı listeler (v0.6.2).
+#: Biri doğrulanınca buradan çıkar — tek yer.
+EXPERIMENTAL = frozenset({'deepseek', 'novita', 'deepinfra', 'huggingface', 'together',
+                          'cody', 'windsurf'})
+
+
 def collect(days: int = 30) -> list:
     """Tüm yapılandırılmış sağlayıcıların kartlarını paralel topla. Bir adaptörün patlaması
        diğerlerini düşürmez (izole try/except).
@@ -62,11 +69,11 @@ def collect(days: int = 30) -> list:
                 provider_id = getattr(mod, 'PROVIDER_ID', mod.__name__.split('.')[-1])
                 provider_name = getattr(mod, 'PROVIDER_NAME', '?')
                 provider_kind = getattr(mod, 'PROVIDER_KIND', 'spend')
-                print(f'Provider {provider_id} error: TimeoutError: exceeded {TOTAL_TIMEOUT}s toplam', file=sys.stderr)
+                print(f'Provider {provider_id} error: TimeoutError: exceeded {TOTAL_TIMEOUT}s total', file=sys.stderr)
                 card = {'id': provider_id,
                         'name': provider_name, 'kind': provider_kind,
                         'status': 'error', 'available': True,
-                        'error': f'Yanıt vermedi ({TOTAL_TIMEOUT}s aşıldı)'}
+                        'error': f'No response ({TOTAL_TIMEOUT}s exceeded)'}
             except Exception as e:                       # adaptör beklenmedik hata → kart açma
                 provider_id = getattr(mod, 'PROVIDER_ID', mod.__name__.split('.')[-1])
                 provider_name = getattr(mod, 'PROVIDER_NAME', '?')
@@ -77,8 +84,10 @@ def collect(days: int = 30) -> list:
                 card = {'id': provider_id,
                         'name': provider_name, 'kind': provider_kind,
                         'status': 'error', 'available': True,
-                        'error': f'Hata ({type(e).__name__})'}
+                        'error': f'Error ({type(e).__name__})'}
             if card and card.get('available'):
+                if card.get('id') in EXPERIMENTAL:
+                    card['experimental'] = True
                 cards.append(card)
     finally:
         # Asılabilen thread'leri iptal et; shutdown'u beklemeden hemen dön (wait=False)

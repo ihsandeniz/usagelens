@@ -62,11 +62,11 @@ def compute_usage() -> dict:
         minutes = (eta_sec % 3600) // 60
         parts = []
         if hours > 0:
-            parts.append(f'{hours}s')
+            parts.append(f'{hours}h')
         if minutes > 0 or hours == 0:
-            parts.append(f'{minutes}dk')
-        eta_text = ' '.join(parts) if parts else '≈ şimdi'
-        return {'willExceed': True, 'etaMs': int(full_at), 'etaText': f'≈ {eta_text} sonra dolar'}
+            parts.append(f'{minutes}m')
+        eta_text = f'full in ≈ {" ".join(parts)}' if parts else 'full ≈ now'
+        return {'willExceed': True, 'etaMs': int(full_at), 'etaText': eta_text}
 
     sess_win = 5 * 3600 * 1000  # 5 saat
     week_win = 7 * 24 * 3600 * 1000  # 7 gün
@@ -74,7 +74,7 @@ def compute_usage() -> dict:
     return {
         'updated': datetime.fromtimestamp(now_ms / 1000).strftime('%H:%M:%S'),
         'calibrated': True,
-        'source': 'demo',
+        'source': 'live',
         'session': {
             'units': 3847,
             'rawTokens': 98234,
@@ -151,7 +151,7 @@ def compute_spend(days: int = 30) -> dict:
 
     by_model = [
         {
-            'model': 'claude-opus-4-8',
+            'model': 'claude-opus-5-5',
             'short': 'opus',
             'usd': opus_spend,
             'source': 'catalog',
@@ -163,7 +163,7 @@ def compute_spend(days: int = 30) -> dict:
             },
         },
         {
-            'model': 'claude-sonnet-4-6',
+            'model': 'claude-sonnet-5',
             'short': 'sonnet',
             'usd': sonnet_spend,
             'source': 'catalog',
@@ -175,7 +175,7 @@ def compute_spend(days: int = 30) -> dict:
             },
         },
         {
-            'model': 'claude-haiku-4-5-20251001',
+            'model': 'claude-haiku-5-5',
             'short': 'haiku',
             'usd': haiku_spend,
             'source': 'catalog',
@@ -214,7 +214,7 @@ def compute_spend(days: int = 30) -> dict:
         # tek bir kez bile çalışmıyordu ve golden şema onu göremiyordu.
         'catalog': _pricing.catalog_status(),
         'source': 'demo',
-        'note': 'Demo verisi — sentetik ama gerçekçi. Gerçek veri USAGE_DEMO ayarlanmadan yüklenir.',
+        'note': 'Demo data — synthetic but realistic. Real data loads when USAGE_DEMO is not set.',
     }
 
 
@@ -319,11 +319,11 @@ def collect(days: int = 30) -> list:
             ],
             'byDay': [],
             'usdSource': 'catalog',
-            'warnings': ['Bir limit penceresi son ölçümden sonra sıfırlandı — o bar '
-                         '"bilinmiyor", sıfır değil.',
-                         'Toplamda en yeni 500 oturum var, daha eskileri sayılmadı. Limit yüzdesi etkilenmez.'],
+            'warnings': ['A limit window reset after the last reading — that bar is '
+                         '"unknown", not zero.',
+                         'Only the newest 500 sessions are counted; older ones were skipped. Limit % is unaffected.'],
             'warningCodes': [{'code': 'windowReset', 'n': 0}, {'code': 'filesCap', 'n': 500}],
-            'note': 'ChatGPT aboneliği — $ API-eşdeğeri maliyettir (gerçek fatura sabit abonelik).',
+            'note': 'ChatGPT subscription — $ is the API-equivalent cost (the real bill is a flat subscription).',
             'updated': datetime.fromtimestamp(now_ms / 1000).strftime('%H:%M:%S'),
         },
         # Ollama: local/offline — üretimin bastığı alanların hepsi burada da var
@@ -338,7 +338,7 @@ def collect(days: int = 30) -> list:
             'modelCount': 0,
             'models': [],
             'running': [],
-            'note': 'Binary kurulu, servis kapalı. `ollama serve` ile başlat.',
+            'note': 'Binary installed, service not running. Start it with `ollama serve`.',
             'updated': datetime.fromtimestamp(now_ms / 1000).strftime('%H:%M:%S'),
         },
         # ElevenLabs: karakter kotası — GERÇEK ŞEMA (kind='quota')
@@ -380,11 +380,12 @@ def collect(days: int = 30) -> list:
         {
             'id': 'together',
             'name': 'Together AI',
+            'experimental': True,
             'kind': 'spend',
             'status': 'nodata',
             'currency': 'USD',
             'tier': 'paid',
-            'note': 'Anahtar geçerli. Together AI kullanım/bakiye ucu yayınlamıyor.',
+            'note': 'Key valid. Together AI publishes no usage/balance endpoint.',
             'updated': datetime.fromtimestamp(now_ms / 1000).strftime('%H:%M:%S'),
         },
         # LM Studio: yerel, sunucu açık (local ok)
@@ -500,32 +501,62 @@ def usage_wire() -> dict:
 
 # ── Live fetch (demo — API hatasını simüle et) ──────────────────────────────
 def fetch() -> dict:
-    """Canlı fetch demo — token olmadığını veya ağ hatası olduğunu simüle et."""
+    """Canlı limit demo — kurulumdaki durum satırı adımı yapılmış gibi: kaynak `statusline`,
+    taze, ağsız. README görseli ürünün gerçekte nasıl göründüğünü göstersin (v0.6.2; eskiden
+    "demo mode — live data off" rozetiyle geliyordu)."""
+    seed = _demo_seed()
+    now_ms = seed['now_ms']
+    sess_reset = int(now_ms / 1000 + 2.5 * 3600)
+    week_reset = int(now_ms / 1000 + 3.5 * 86_400)
     return {
-        'ok': False,
-        'error': 'demo mode — canlı veri kapalı',
-        'cached': False,
-        'fetchedAtMs': None,
-        'ageSec': None,
+        'ok': True,
+        'error': None,
+        'reason': 'ok',
+        'cached': True,
+        'fetchedAtMs': int(now_ms - 40_000),
+        'ageSec': 40.0,
         'stale': False,
         'rateLimited': False,
         'rateLimitTier': None,
         'staleReason': None,
         'retryAtMs': None,
-        'source': None,
+        'source': 'statusline',
+        'statusline': 'present',
+        'hint': {'code': None, 'text': None},
         'raw': None,
-        'windows': {},
+        'windows': {'five_hour': {'utilization': 35.0, 'resets_at': sess_reset,
+                                  'remaining': None, 'overage': None},
+                    'seven_day': {'utilization': 52.1, 'resets_at': week_reset,
+                                  'remaining': None, 'overage': None}},
+    }
+
+
+def kutu() -> dict:
+    """Limit Kara Kutusu demo kartı: bu pencere alışılmışın ~2× hızlı yanıyor (özelliğin
+    asıl gösterdiği durum). `limitseri.kutu()` ile aynı şema."""
+    return {
+        'pencere': 'five_hour', 'durum': 'tamam',
+        'son': {'p': 35.0, 'yasSn': 40, 'kaynak': 'statusline'},
+        'pencereBasi': int(_demo_seed()['now_ms'] / 1000 - 2.5 * 3600),
+        'dokum': {'turn': 412, 'birim': 6420.0, 'ham': 18_400_000,
+                  'model': {'opus': 0.71, 'sonnet': 0.22, 'haiku': 0.07},
+                  'surum': {'2.1.300': 1.0},
+                  'alt_ajan': 0.31, 'onbellek_okuma': 0.58,
+                  'oturumSayisi': 4, 'oturumlar': [0.52, 0.27, 0.14, 0.07]},
+        'oran': 183_400.0, 'temel': 402_100.0, 'kat': 0.456, 'bayrak': True,
+        'esik': 0.5, 'olculen': 14, 'cv': 0.17,
+        'sonBayrak': {'yasSn': 600, 'kat': 0.456}, 'asgariPuan': 5,
     }
 
 
 if __name__ == '__main__':
     # Test
     import pprint
-    print('=== LİMİTLER ===')
+    print('=== LIMITS ===')
     pprint.pprint(compute_usage())
-    print('\n=== HARCAMA ===')
+    print('\n=== SPEND ===')
     pprint.pprint(compute_spend(30))
-    print('\n=== SAĞLAYICILAR ===')
+    print('\n=== PROVIDERS ===')
     pprint.pprint(collect(30))
     print('\n=== WIRE ===')
     pprint.pprint(usage_wire())

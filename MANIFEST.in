@@ -3,4 +3,5 @@
 graft web
 graft data
 include price_overrides.json
+include surface/statusline.py
 global-exclude __pycache__ *.pyc

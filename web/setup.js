@@ -39,7 +39,7 @@ const I18N = {
   en: {
     tag: 'setup',
     introTitle: "Let's get you set up",
-    introBody: 'Six steps. Every one shows you exactly what it will write before it writes it, backs the file up first, and can be undone from this same page. Nothing needs root, nothing leaves this machine.',
+    introBody: 'Seven steps. Every one shows you exactly what it will write before it writes it, backs the file up first, and can be undone from this same page. Nothing needs root, nothing leaves this machine.',
     autoAll: 'Set up the recommended parts',
     autoNote: '— server, badge and any keys you already export. Skips the optional surfaces.',
     doneTitle: 'Finished?',
@@ -81,6 +81,10 @@ const I18N = {
     st5_add: 'Add a key',
     st5_save: 'Save',
     st5_never: 'Values are written straight to the keys file (chmod 600) and are never read back into this page.',
+    st_sl: 'Live limits (Claude Code status line)',
+    st_sld: 'Claude Code already receives your limit % with every reply. A status line hook saves it, so the panel shows live limits right away — no extra request to the rate-limited endpoint. Your own status line, if you have one, keeps showing.',
+    st_sl_wrap: 'yours — will be wrapped, keeps showing',
+    st_sl_noclaude: 'Claude Code is not installed here (no ~/.claude). Spend still works; live limits need Claude Code.',
     st6: 'Verify',
     st6d: 'Proof, not promises — the same checks the terminal wizard runs at the end.',
     st6b: 'Run the checks',
@@ -93,7 +97,7 @@ const I18N = {
   tr: {
     tag: 'kurulum',
     introTitle: 'Kuruluma başlayalım',
-    introBody: 'Altı adım. Her biri yazmadan önce tam olarak ne yazacağını gösterir, dosyayı önce yedekler ve aynı sayfadan geri alınabilir. Hiçbiri root istemez, hiçbir şey bu makineden çıkmaz.',
+    introBody: 'Yedi adım. Her biri yazmadan önce tam olarak ne yazacağını gösterir, dosyayı önce yedekler ve aynı sayfadan geri alınabilir. Hiçbiri root istemez, hiçbir şey bu makineden çıkmaz.',
     autoAll: 'Önerilen parçaları kur',
     autoNote: '— sunucu, rozet ve shell\'de zaten tanımlı anahtarlar. Opsiyonel yüzeyleri atlar.',
     doneTitle: 'Bitti mi?',
@@ -135,6 +139,10 @@ const I18N = {
     st5_add: 'Anahtar ekle',
     st5_save: 'Kaydet',
     st5_never: 'Değerler doğrudan anahtar dosyasına yazılır (chmod 600) ve bu sayfaya bir daha asla okunmaz.',
+    st_sl: 'Canlı limitler (Claude Code durum satırı)',
+    st_sld: 'Claude Code limit yüzdeni her cevapla zaten alıyor. Bir durum satırı kancası bunu kaydeder; panel canlı limiti hemen gösterir — rate-limit\'li uca ek istek yok. Kendi durum satırın varsa görünmeye devam eder.',
+    st_sl_wrap: 'seninki — sarılır, görünmeye devam eder',
+    st_sl_noclaude: 'Bu makinede Claude Code kurulu değil (~/.claude yok). Harcama yine çalışır; canlı limit için Claude Code gerekir.',
     st6: 'Doğrulama',
     st6d: 'Vaat değil kanıt — terminal sihirbazının sonda koştuğu kontrollerin aynısı.',
     st6b: 'Kontrolleri çalıştır',
@@ -345,7 +353,37 @@ const STEPS = [
   },
 
   {
-    id: 'keys', num: 5, title: 'st5', desc: 'st5d',
+    id: 'statusline', num: 5, title: 'st_sl', desc: 'st_sld',
+    status(p) {
+      const s = p.statusline || {};
+      if (s.installed) return ['good', 's_present'];
+      if (s.state === 'no-claude') return ['off', 's_none'];
+      if (s.state === 'invalid' || s.state === 'manual') return ['warn', 's_manual'];
+      return ['off', 's_off'];
+    },
+    render(p) {
+      const s = p.statusline || {}, pv = state.previews.statusline;
+      const out = [facts([
+        ['settings', s.settings || '—', ''],
+        ['status line', s.installed ? '✓' : (s.state === 'other' ? t('st_sl_wrap') : '—'),
+          s.installed ? 'yes' : 'no'],
+      ])];
+      if (s.state === 'no-claude') {
+        out.push(h('div', { class: 'banner' }, t('st_sl_noclaude')));
+        return out;
+      }
+      if ((s.state === 'invalid' || s.state === 'manual') && pv && pv.snippet) out.push(snippetBlock(pv.snippet));
+      if (!s.installed) out.push(disclosure('statusline'));
+      out.push(actions([
+        btn('primary', t('apply'), () => doStep('statusline'), s.installed),
+        s.installed ? btn('txtbtn', t('undo'), () => undoStep('statusline')) : null,
+      ]));
+      return out;
+    },
+  },
+
+  {
+    id: 'keys', num: 6, title: 'st5', desc: 'st5d',
     status(p) {
       const k = p.keys || {};
       if ((k.shell_only || []).length) return ['warn', 's_partial'];
@@ -402,7 +440,7 @@ const STEPS = [
   },
 
   {
-    id: 'verify', num: 6, title: 'st6', desc: 'st6d',
+    id: 'verify', num: 7, title: 'st6', desc: 'st6d',
     status() {
       if (state.verified === null) return ['off', 's_notrun'];
       return state.verified ? ['good', 's_ok'] : ['crit', 's_off'];
@@ -556,6 +594,8 @@ async function autoAll() {
   if (w.badge === 'absent' && w.editable) await run('waybar');
   const shell = ((state.probe || {}).keys || {}).shell_only || [];
   if (shell.length) await run('keys', { import_shell: true });
+  const sl = (state.probe || {}).statusline || {};
+  if (sl.state === 'absent' || sl.state === 'other') await run('statusline');
   await run('verify');
   setConn(failed.length ? `${t('autoFailed')} ${failed.join(', ')}` : t('autoDone'));
   btnEl.disabled = false;

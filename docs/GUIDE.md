@@ -1,0 +1,533 @@
+# usagelens — full guide
+
+The complete reference: install options, every surface, providers, configuration, endpoints
+and security. The short version is the [README](../README.md).
+Türkçe: [README.tr.md](../README.tr.md)
+
+![usagelens panel](screenshot.png)
+
+---
+
+## Why
+
+If you use Claude Code, Codex, OpenRouter, Ollama etc., your spend and rate-limit status are scattered across dashboards — or invisible. usage-tracker reads what's already on your disk (transcripts) plus the providers' own live endpoints, and surfaces it where you can glance at it.
+
+## Install
+
+```bash
+git clone https://github.com/ihsandeniz/usage-tracker.git
+cd usage-tracker
+./setup.sh            # ★ guided wizard: deps → server → waybar → widget/tray → live limits → keys → verify
+```
+
+Rather click than type? `./setup.sh --ui` runs the same seven steps in a browser window —
+each one showing a real diff of what it is about to write, with an Undo button next to it.
+
+**On Windows?** Download the `.exe` from
+[Releases](https://github.com/ihsandeniz/usage-tracker/releases/latest) and **double-click
+it** — the setup wizard opens in your browser by itself, in English or Turkish. No commands,
+no separate installer. Step by step, including what SmartScreen will say:
+[`docs/WINDOWS.md`](WINDOWS.md) · [Türkçe](WINDOWS.tr.md)
+
+![the setup wizard showing the exact diff it will write to your waybar config](setup-wizard.png)
+
+```bash
+./setup.sh --ui         # the wizard as a page (opens a window; prints the URL either way)
+./setup.sh --auto       # non-interactive: recommended answer for every question
+./setup.sh --uninstall  # undo everything the wizard set up (keys and repo stay)
+./setup.sh --help
+```
+
+The terminal wizard stays the default, because it is the one that works over SSH, on a
+headless box, and in a dotfiles script. Both faces call the same code — `setup.sh probe`,
+`setup.sh do <step>`, `setup.sh undo <step>` — so they cannot drift apart.
+
+What the wizard will and won't do to your system:
+
+- **Backs up every file it touches** as `<file>.bak-usage-tracker`.
+- **Edits your waybar config surgically** — comments and formatting survive. It parses the file
+  before and after, and rolls back if the result isn't valid JSONC.
+- **Refuses to guess.** Unparseable config, or a `modules-*` list that lives in an `include`?
+  It leaves the file alone and hands you the snippet (on your clipboard) to paste yourself.
+- **Idempotent.** Re-run it as often as you like; already-done steps are no-ops.
+- **Imports API keys you already exported in your shell** into the keys file — because shell
+  exports never reach the autostarted service, which used to leave cards silently empty.
+- **Verifies instead of promising**: at the end it queries the server, counts resolved provider
+  cards, and runs the waybar feeder once to show you its real output.
+- No root, no network calls, nothing outside `~/.config` and this repo.
+
+### Why `--ui` is a separate, temporary server
+
+The long-running server (`:8770`) is **read-only**, and that is what lets this tool claim
+nothing leaves your machine. Endpoints that edit your waybar config or touch your API keys
+do not belong there, because a browser can be tricked into calling a localhost server: any
+page you have open can POST to `127.0.0.1` (CORS blocks reading the reply, not sending the
+request), and a domain that resolves to `127.0.0.1` becomes same-origin and can read replies
+too. So `--ui` starts a **separate** server that
+
+- picks an ephemeral port and mints a one-time token, passed in the URL fragment
+  (fragments are never sent to a server, so the token cannot land in a log);
+- rejects any request whose `Host` is not `127.0.0.1:<port>` — this is what stops DNS rebinding;
+- rejects any request with a foreign `Origin`, and any API call without the token;
+- **never returns a key value** — you can set or remove a key, never read one back;
+- exits when you press Finish, or after ten idle minutes.
+
+Key values reach `setup.sh` over stdin, never argv, which is world-readable in `/proc`.
+
+Prefer to do it by hand? Skip the wizard:
+
+```bash
+./install.sh          # checks deps, generates config + keys file, prints snippets
+./start.sh            # → http://127.0.0.1:8770
+```
+
+**Requirements:** Python 3.9+ (stdlib). `bash`, `curl` + `jq` (1.6 or newer) for the waybar
+feeder — no bash (e.g. Alpine)? `sh surface/waybar-usage.sh` works with busybox too.
+**macOS** is not tested. The panel and spend should work, but Claude Code keeps its login in the
+Keychain there, not in `~/.claude/.credentials.json`, so live limits come only through the
+[status line](../surface/README.md#option-d--claude-code-status-line-as-the-live-limit-source-statuslinepy). A Chromium-family
+browser (optional, for the floating widget), `hyprctl` (optional, auto-floats the widget on
+Hyprland), `wl-copy`/`xclip` (optional, lets the wizard copy the waybar snippet). `install.sh`
+reports what's missing.
+
+## Autostart (recommended)
+
+So the badge always has data, run the server on login. One command, no root — a **systemd user service** (works on any systemd distro):
+
+```bash
+./service.sh install      # generate + enable + start on login
+./service.sh status       # check it
+./service.sh uninstall    # remove it
+```
+
+Only the server needs autostart; the waybar badge and the floating widget attach to it.
+
+<details><summary>Autostart without systemd</summary>
+
+**Hyprland** (`hyprland.conf`):
+```
+exec-once = /ABS/PATH/start.sh
+```
+
+**Generic XDG autostart** — create `~/.config/autostart/usage-tracker.desktop`:
+```ini
+[Desktop Entry]
+Type=Application
+Name=usage-tracker
+Exec=/ABS/PATH/start.sh
+X-GNOME-Autostart-enabled=true
+```
+</details>
+
+## Not on Arch/Hyprland?
+
+The setup wizard auto-detects your desktop environment and available panel software, then suggests the right surface for you. Here's the full map:
+
+### XFCE (Kali, Fedora XFCE)
+
+Install the XFCE genmon plugin:
+```bash
+sudo apt install xfce4-genmon-plugin      # Debian / Ubuntu / Kali
+sudo dnf install xfce4-genmon-plugin      # Fedora
+sudo pacman -S xfce4-genmon-plugin        # Arch
+```
+
+Add to your XFCE panel: *Panel → Add New Items → Generic Monitor*, then in its properties:
+- **Command:** `python3 /ABS/PATH/server.py usage --format genmon`
+- **Period (s):** `30`
+
+### GNOME (Fedora GNOME, Ubuntu GNOME)
+
+Install Argos or Executor extension:
+```bash
+# Argos (simple shell script approach)
+mkdir -p ~/.config/argos
+cat > ~/.config/argos/usage.30s.sh <<'EOF'
+#!/bin/bash
+exec python3 /ABS/PATH/server.py usage --format argos
+EOF
+chmod +x ~/.config/argos/usage.30s.sh
+```
+
+Then install the Argos GNOME extension from https://extensions.gnome.org/extension/1357/argos/
+
+### KDE Plasma
+
+Add a Command Output plasmoid to your panel:
+1. Right-click the panel → **Edit Panel** → **Add Widget** → **Command Output**
+2. In the plasmoid settings:
+   - **Command:** `python3 /ABS/PATH/server.py usage --format plain`
+   - **Interval:** `30` seconds
+
+### Polybar
+
+Add a module to your polybar config (`~/.config/polybar/config.ini`):
+```ini
+[module/usage_tracker]
+type = custom/script
+exec = python3 /ABS/PATH/server.py usage --format polybar
+interval = 30
+format = <label>
+```
+
+Then add `usage_tracker` to your bar's `modules-right` or `modules-left`.
+
+### i3blocks
+
+Add to your i3blocks config (`~/.config/i3blocks/config`):
+```ini
+[usage_tracker]
+command=python3 /ABS/PATH/server.py usage --format i3blocks
+interval=30
+```
+
+In all cases, replace `/ABS/PATH` with the actual path to your usage-tracker repo (e.g., `/home/user/usage-tracker`).
+
+The wizard's verify step suggests the best fit for your system and prints the command to paste:
+```bash
+./setup.sh probe        # show the desktop and the recommended surface (touches nothing)
+./setup.sh do verify    # check server and badge; with no waybar, print your desktop's command
+```
+
+## Provider keys
+
+Claude Code, Codex and local runners (Ollama / LM Studio / Jan) need **no key** — they read files already on your disk. Hosted providers need an API key to show a card. A missing key just hides that card (**no dead cards**) — nothing breaks.
+
+Keys live in **one file**, `~/.config/usage-tracker/env` (created by `install.sh`/`setup.sh`, `chmod 600`). It's loaded by both `./start.sh` and the systemd service, so keys work whether you run the server by hand or on login. Format is `KEY=value`, one per line — uncomment what you use:
+
+| Provider | Env var | Shows | Get a key |
+|---|---|---|---|
+| OpenRouter | `OPENROUTER_API_KEY` | spend + credit + daily limit | <https://openrouter.ai/keys> |
+| OpenAI | `OPENAI_ADMIN_KEY` | Costs API spend — needs an **admin** key (project key → 401) | Platform → *Admin keys* |
+| ElevenLabs | `ELEVENLABS_API_KEY` | character quota + monthly reset | ElevenLabs → *Profile* |
+
+### Experimental providers
+
+These adapters exist, but **nobody has seen a successful reply from them yet** — the field
+names inside a real response are unverified (see *How far these are verified* below). They
+stay off the main list until someone with a key confirms them; their cards are marked
+`experimental`. If one meets a reply it does not recognise it shows no figure — it does not
+invent one.
+
+| Provider | Env var | Should show | Get a key |
+|---|---|---|---|
+| DeepSeek | `DEEPSEEK_API_KEY` | balance | <https://platform.deepseek.com> |
+| Novita | `NOVITA_API_KEY` | credit balance | <https://novita.ai/settings/key-management> |
+| DeepInfra | `DEEPINFRA_API_KEY` | credit balance | DeepInfra → *API keys* |
+| Hugging Face | `HUGGINGFACE_API_KEY` / `HF_TOKEN` | quota | <https://huggingface.co/settings/tokens> |
+| Together | `TOGETHER_API_KEY` | **nothing — Together publishes no usage endpoint**; the card only checks the key | <https://api.together.xyz/settings/api-keys> |
+
+The local-log adapters for **Cody** and **Windsurf** are in the same state: detection works,
+the log format has not been confirmed on a real install.
+
+After editing keys, restart the server: `./service.sh restart` (or re-run `./start.sh`).
+
+### How far these are verified
+
+On 2026-08-11 every endpoint above was probed **without credentials**. A `401` proves the
+URL exists and wants a key; a `404` proves the adapter would never have worked. Everything
+marked ✅ came back `401` (or `400` for Novita, which wants a parameter).
+
+**Together AI is the exception and it is worth being blunt about.** Its API base is real —
+`/v1/models` answers `401 Missing API key` — but it publishes no account, balance or usage
+endpoint at all: seven candidate paths all returned `404` with an HTML page, on both
+`api.together.xyz` and `api.together.ai`. The adapter used to scan those non-existent
+responses for any field named `balance`/`credit`/`remaining` and print the first number it
+found. It now validates your key and says plainly that Together exposes nothing to read.
+
+What is **still unverified** is the response *shape* behind those 401s — nobody here has a
+key for these services, so the field names inside a successful reply have not been seen. If
+an adapter meets a payload it does not recognise it says so and shows no figure; it will
+not invent one. Amount scanning is deliberately narrow (`usage/providers/_money.py`): a
+boolean is not an amount, and a `remaining` buried in some unrelated rate-limit object is
+not your balance.
+
+## What it tracks
+
+| Dimension | What | Source |
+|---|---|---|
+| **Spend** | Today / Yesterday / 30-day **$** + per-model + 30-day chart | `~/.claude/projects/**/*.jsonl` tokens × real prices |
+| **Limits** | Session (5h) + Weekly usage %, reset countdown | Anthropic's own `/api/oauth/usage` (real), local estimate as fallback |
+| **Providers** | 16 adapters: real $ (OpenRouter, OpenAI), quota (ElevenLabs), local (Ollama, LM Studio, Jan), local-log tokens (Codex, Aider, Continue) — plus experimental ones (DeepSeek, Novita, DeepInfra, Hugging Face, Together, Cody, Windsurf; see *Experimental providers*) | each provider's API / local files |
+
+### Is the data real?
+
+Trust matters, so every number is labelled by source — nothing is silently made up:
+
+- **Token counts: 100% real** — read from transcripts, not estimated.
+- **Prices: real** — Opus/Sonnet/Haiku from the [models.dev](https://models.dev) catalog (`source: catalog`); models not yet in the catalog use official vendor pricing (`source: official`). Anything unverified is flagged `source: estimate`.
+- **1-hour cache writes are priced as such** — 2× base input, against 1.25× for 5-minute writes. Output tokens come from a reply's last log line, where they are complete. Haiku 5.5's higher price above 100,000 prompt tokens is applied per request.
+- **Codex tokens carry a small unresolved gap.** Newer Codex logs add `token_usage_record` lines, which are not read; the `token_count` events that are read differed from them by 1.3% on input and 3.3% on output in one measurement. Which is exact could not be measured.
+- **Prices work offline, out of the box** — a models.dev snapshot ships inside the repo, so a fresh clone prices your usage on the first run with no network and no other tool installed. Refresh it whenever you like: `python3 -m usage.catalog --update`. Run `python3 -m usage.catalog` to see which source is in use and how old it is.
+- **A model nobody has priced is not counted as $0.** Its tokens are reported separately in `unknownPriceModels` and left out of the totals, so a total that is incomplete says so instead of quietly looking finished.
+- **A scan that stopped early says so** — the local-log adapters cap how much they read; when they hit that cap the card reads `partial` and explains itself, rather than presenting a truncated number as your usage.
+- **Limits: real, no calibration** — read from Claude Code's own status line when it is installed (no extra request), otherwise from the same endpoint Claude Code's `/usage` uses.
+- **If you're on a subscription (Max, ChatGPT Plus…),** the $ figure is the **API-equivalent cost** (what this usage would cost pay-as-you-go) = the value you're getting from the subscription. Your actual bill is the flat fee, not this number.
+- **Not priced separately:** Opus fast mode (logs now carry `usage.speed`, the premium is not applied) and 1M-context premium pricing, which doesn't appear in the transcript's model field, are computed at standard rates (real cost may be slightly higher).
+
+## Where did my limit go? (Limit Black Box)
+
+The limit bar says *how much* is gone. It cannot say whether this 5-hour window is burning
+faster than your usual one, or what ate it. usage-tracker keeps the history needed to answer
+that, from files on your machine only.
+
+**What it records.** Every time the official limit percentage changes, one line is appended
+to `~/.local/state/usage-tracker/limit-seri.jsonl` (percentage + reset time; capped at 2 MB,
+newest lines kept). The numbers come from the Claude Code status line hook
+(`surface/statusline.py`) and from the panel's own live read — no extra request is made. If
+the Claude desktop app is installed, its own percentage history
+(`~/.config/Claude/plan-usage-history.json`, `%APPDATA%\Claude\…` on Windows) is **read, never
+copied or written**: only the time and the two percentages are taken, the account id is
+dropped while parsing. That file's format is not official; if it changes, the history is
+reported as unreadable instead of guessed.
+
+**What it measures.** For each continuous stretch of the limit (at least 5 points, no reset
+in between), the local Claude Code work done in it is divided by the points it cost:
+*units per 1%*. Units are the same weights the estimate uses (opus/fable 1 · sonnet 0.25 ·
+haiku 0.05 × `out×4 + in + cache_write + cache_read×0.1`). The usual value is the median of
+your last 30 stretches. A stretch at **half the usual or less** — each 1% bought half the
+work — is flagged **2× faster**.
+
+**Where you see it.**
+
+- Panel: the **What used the limit** box under the limit bars — this window's units per 1%,
+  how that compares with your usual, the model split (in points of the limit), the share of
+  subagents and of cache reads, and how many sessions ran. Session ids are never shown.
+- `GET /api/limit-kutu` — the same numbers as JSON (read-only, no network, cached 60 s).
+- `usage-tracker kanit` — anonymous evidence you can paste into a bug report:
+
+```
+$ usage-tracker kanit
+usage-tracker 0.6.1 · limit evidence · window 5h
+Claude: 14 measured stretches (2026-09-22T19:36Z → 2026-10-08T22:02Z), median 497868 units per 1%, CV 17%, flagged 2x-faster: 0
+
+start (UTC)        min  points  units/1%   x usual  flag  models  client
+2026-09-29T09:53Z   265       8     587007    1.264        opus 99% sonnet 1%  2.1.284
+…
+Codex (experimental): noisy — 316 stretches, CV 153% > 50%; no ratio or flag reported.
+```
+
+`--window 7d` for the weekly limit, `--json` for machines, `--no-codex` to leave Codex out.
+The evidence carries UTC times (to the minute), ratios, model family (Claude: `opus`,
+`sonnet`, `haiku`, `fable`, anything else `other`; Codex: `gpt-…`/`o…`/`codex…` names, anything
+else `other`) and the Claude Code version — **no prompts,
+paths, project names, session ids, git branches or account ids**. It is built from an
+allow-list and scanned before printing; if the scan finds anything that looks personal
+(a home path, an id, an e-mail) nothing is printed and the command exits 1.
+
+**Codex is experimental.** The same ratio is computed from Codex's own rollout logs, but on
+the machine this was built on it swings too much to mean anything (CV 153% over 5 h, 62%
+weekly). Above 50% the evidence says `noisy` and gives no ratio or flag.
+
+**Read it with care.**
+
+- Usage this machine never sees — claude.ai chats, another computer — raises the percentage
+  without adding units, so it *looks* faster. The panel says so under the box.
+- The limit percentage is a whole number; that is why stretches under 5 points are skipped.
+- The weights are a heuristic tuned for the estimate, not Anthropic's formula. On the
+  author's machine the ratio was stable enough to use (14 stretches, CV 17%; weekly CV 2%);
+  yours may differ. `python3 -m usage.limitseri sinav` runs the same check on your history.
+
+## The surface — two independent options
+
+Everything under `surface/` is **isolated** (it never touches your existing `~/.config/waybar` or
+`~/.config`) and the two surfaces are **independent** — install the waybar badge, the floating
+widget, both, or neither. Neither depends on the other.
+
+### Option A — waybar badge
+
+A compact `◐ S13% W18%` module in your bar: the text is Claude's session and weekly %, the colour
+follows the highest fresh % across Claude and Codex (the same rule as the phone badge), the tooltip
+lists every provider, and clicking it opens the web panel. `install.sh` prints the ready-to-paste
+`custom/usage` snippet + `style.css` colors. Standalone — no browser required.
+
+### Option B — floating widget
+
+The web panel as a **movable + resizable** always-on-top window (a Chromium-family `--app`
+window). Unlike a bar widget, you position and size it however you like:
+
+- **Move** it — `Super`+drag (or your compositor's move binding).
+- **Resize** it — `Super`+right-drag, or drag the edges. The browser remembers your size/position.
+
+```bash
+surface/usage-widget open      # show it
+surface/usage-widget close     # hide it
+surface/usage-widget toggle    # show/hide (good for the waybar on-click)
+surface/usage-widget status    # open / closed
+```
+
+On **Hyprland** it's auto-floated, pinned (visible on every workspace), and placed top-right at
+`WIDGET_SIZE` — no config edit needed. On other compositors, float/size it with your own controls.
+Requires a Chromium-family browser (chromium / chrome / brave / …). Standalone — no waybar required.
+
+#### Desktop compatibility
+
+The **waybar badge** works on any systemd-based Linux (Hyprland, GNOME, Plasma, etc.).  
+The **floating widget** requires a Chromium-family browser and works on any Linux:
+- **Hyprland:** Auto-float/pin built-in.
+- **GNOME / Plasma / Cinnamon:** Float/pin it with your compositor's native controls (usually right-click title bar → Properties).
+- **i3 / Openbox:** Floating layers work; consult your config for layering.
+
+The core **web panel** (`http://127.0.0.1:8770`) runs on every Linux and every desktop environment — no special setup needed.
+
+Autostart (Hyprland): `exec-once = /ABS/PATH/surface/usage-widget open`.
+
+### Option C — the command line
+
+The other two surfaces are things you look at. This one another program can ask:
+
+```bash
+python3 server.py guard --threshold 80 || echo "not now — the quota is nearly gone"
+```
+
+```
+python3 server.py usage        # limits, spend and every provider card
+python3 server.py providers    # which cards exist, and why one is missing
+python3 server.py guard        # exit 0 ok · 1 warn · 2 critical · 3 unknown
+python3 server.py watch        # fire once per threshold crossing (--exec / --notify)
+python3 server.py doctor       # diagnose an installation without asking for logs
+python3 server.py config       # visible cards, thresholds, refresh interval
+python3 server.py kanit        # anonymous limit evidence: units per 1%, 2x-faster windows
+```
+
+One place moves the alert line for **all four surfaces**, because the pair travels in the wire:
+
+```bash
+python3 server.py config --warn 60 --crit 85   # panel · waybar · tray · guard
+```
+
+No server needed (it computes locally when nothing answers on `:8770`), and no bash, curl or
+jq — which is how Windows gets a usable surface while the `.sh` feeders stay Linux-only.
+`usage --format waybar` is the bar feeder without the shell. The single-file build is the
+same binary: `usage-tracker guard`.
+
+Full reference, including the exit-code contract and the `UT_*` variables `watch --exec`
+sets: [`docs/CLI.md`](CLI.md).
+
+## Configuration
+
+### Where your data lives
+
+Nothing is written into the installation directory — it may be read-only (a PyInstaller
+bundle, `Program Files`, `/usr/lib`, a container). Run `python3 server.py doctor` to print
+the exact paths on your machine.
+
+| | Linux / BSD | Windows |
+|---|---|---|
+| view config, settings | `~/.config/usage-tracker/` | `%APPDATA%\usage-tracker\` |
+| calibration, live cache | `~/.local/state/usage-tracker/` | `%LOCALAPPDATA%\usage-tracker\State\` |
+| fetched price catalogue | `~/.cache/usage-tracker/` | `%LOCALAPPDATA%\usage-tracker\Cache\` |
+| limit % history (`limit-seri.jsonl`, ≤ 2 MB) | `~/.local/state/usage-tracker/` | `%LOCALAPPDATA%\usage-tracker\State\` |
+
+`XDG_CONFIG_HOME` / `XDG_STATE_HOME` / `XDG_CACHE_HOME` are honoured. Upgrading from an
+older version keeps working: a `usage_calib.json` or `view_config.json` sitting next to the
+code is still read, and the next save moves it. Nobody has to recalibrate.
+
+`surface/surface.conf` (created by `install.sh`, git-ignored — machine-specific):
+
+```sh
+USAGE_URL="http://127.0.0.1:8770"
+WIDGET_SIZE="360x520"                 # floating widget initial size (you can drag/resize after)
+WIDGET_CLASS="usage-tracker-widget"
+```
+
+### Settings
+
+The panel's **⚙ Settings** section — and `config` on the command line — change three things:
+the warn/critical thresholds, how often the panel polls, and the display currency. They land
+in `settings.json`, and the thresholds travel from there to the top of `/v1/usage`, which is
+why moving them once moves every surface.
+
+**A converted amount is derived, not measured.** You enter the rate; the app never fetches
+one. The result is shown *beside* the dollars, carrying its rate and the day you entered it:
+`≈ ₺210,850.89 · rate 1 USD = 41.2 TRY · entered 12.08.2026`. A converted number without a
+visible source is a number nobody can defend.
+
+**Keys are not writable here.** The panel and `config` show the environment variable name and
+whether it is set — never the value. Writing keys stays in `./setup.sh --ui` (step `keys`),
+which runs on a random port behind a one-time token and shuts itself down. The permanent
+panel server has none of those properties and is up all day, so it was not given the power.
+
+### Adding providers
+
+Provider adapters live in `usage/providers/`. Each module exposes `collect(days) -> dict | None`; returning `None` means "no card" (a missing/unconfigured provider is silently hidden — **no dead cards**). To add one, drop `usage/providers/<name>.py` and register it in `_ADAPTERS`. OpenRouter reads `$OPENROUTER_API_KEY` from the environment.
+
+## HTTP endpoints
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/spend?days=30` | Today/Yesterday/30d $ + byModel + byDay |
+| `GET /api/usage` | Claude limit panel (`source: live\|calibration`) |
+| `GET /api/live[?force=1]` | Raw Anthropic live usage (verification) |
+| `GET /api/providers` | Multi-provider cards |
+| `GET /api/context[?breakdown=0]` | Context-window fill of every open Claude Code session |
+| `GET /api/limit-kutu` | Limit Black Box: this window's units per 1%, usual, 2×-faster flag, model / subagent / cache-read shares (no session ids) |
+| `GET /v1/usage` | Stable wire-format (`schema: usage/v1`) — used by the waybar feeder |
+| `GET /api/settings` | Thresholds, refresh, display currency + key **names** and set/unset |
+| `POST /api/settings` | Change them (validated; keys are refused by design) |
+
+**The context card runs `claude` in the background.** The per-session category breakdown
+(Messages · Memory files · MCP tools …) is Claude Code's own `/context`, run headless on a
+*fork* of each open session: `claude -p --resume <id> --fork-session --no-session-persistence`.
+The source transcript is not touched and hooks are off, but each run starts your full Claude
+Code setup (MCP servers, plugins) — at most once per session every 2 minutes, one at a time,
+only while the full panel is open and visible. The floating widget never asks for it. Turn it
+off with `USAGE_CONTEXT_BREAKDOWN=0` (totals keep working); `USAGE_CLAUDE_BIN` points at a
+`claude` that is not on `PATH`.
+
+`/v1/usage` is a public contract, not an internal detail: four surfaces here read it and so may
+your scripts. The fields, the compatibility rules and what changed when are in
+[`docs/WIRE.md`](WIRE.md).
+
+## Security & privacy
+
+- Binds **`127.0.0.1` only** — never exposed to the network.
+- **Read-only** to your data. OAuth tokens in `~/.claude/.credentials.json` are only *read*, never written or refreshed (writing could drop your active session).
+- No telemetry, no external calls except the providers' own APIs you already use.
+- Static file serving is path-traversal protected.
+- Writing endpoints validate both `Host` and `Origin`. A page on the open internet can reach
+  `127.0.0.1`, but it cannot write: a foreign `Origin` is refused with 403.
+- The two reads with side effects — `/api/context` (starts `claude`) and `/api/live?force=1`
+  (calls Anthropic) — also refuse other sites (`Sec-Fetch-Site: cross-site|same-site`, or a
+  foreign `Origin`), so a page cannot trigger them with a blind `no-cors` request.
+- No endpoint ever returns an API key's value, and none writes one.
+- The Claude desktop app's percentage history is read, never written or copied; its account id
+  is dropped while parsing. `usage-tracker kanit` refuses to print if its output looks personal.
+
+## Development
+
+```bash
+python3 -m unittest discover -s tests -t .   # the test suite — stdlib only, nothing to install
+python3 server.py --version                  # single source of truth, CI checks it against the git tag
+python3 -m usage.pricing                     # price-resolution spot-check
+python3 -m usage.engine                      # limits + $ summary from real transcripts (no server)
+python3 -m usage.catalog                     # which price catalogue is in use, and how old
+```
+
+The test suite has **no test dependencies** — same promise as the runtime. CI runs it on Ubuntu
+and Windows, on Python 3.9 and 3.13, with no install step. Read `tests/README.md` before adding
+to it; the short version is *write the failing test first, and assert the number, not the shape*.
+
+## Roadmap
+
+- [x] Spend + real prices, live Claude limits (no calibration)
+- [x] Multi-provider adapters — 16 across 4 kinds (spend / tokens / local / quota)
+  - real $: OpenRouter, OpenAI (Costs API, admin key), DeepSeek *(balance API — documented, candidate)*
+  - credit/quota: ElevenLabs, HuggingFace, Together, Novita, DeepInfra *(some candidate — verify with a live key)*
+  - local ($0): Ollama, LM Studio, Jan
+  - local-log tokens: Codex, Aider, Continue, Cody, Windsurf
+- [x] waybar badge + movable/resizable floating widget
+- [x] Per-provider data selection (⚙ View tab → `view_config.json`; waybar/widget/panel obey)
+- [x] Optional native system-tray icon (Qt `QSystemTrayIcon`; SNI → waybar tray)
+- [x] CLI — `usage` / `providers` / `guard` / `watch` / `doctor` / `config`, with a documented
+      exit-code contract for scripts ([`docs/CLI.md`](CLI.md))
+- [x] Panel ⚙ settings — thresholds / refresh / display currency, plus read-only key status
+- [ ] Verify candidate endpoints (Together / Novita / DeepInfra / HuggingFace / DeepSeek) against live keys
+
+## Contributing
+
+Issues and PRs welcome. The design constraints are deliberate: **stdlib Python + Vanilla JS, zero runtime dependencies, loopback-only, every number labelled by source.** Please keep them.
+
+## License
+
+[MIT](../LICENSE) © 2026 İhsan Deniz

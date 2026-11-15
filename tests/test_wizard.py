@@ -436,7 +436,7 @@ class TheMachineInterface(_Sandbox):
         probe = wizard.probe()
         self.assertTrue(probe['ok'])
         ids = [s['id'] for s in probe['steps']]
-        self.assertEqual(ids, ['install', 'autostart', 'shortcut', 'keys', 'verify'])
+        self.assertEqual(ids, ['install', 'autostart', 'shortcut', 'statusline', 'keys', 'verify'])
         for sid in ids:
             self.assertIn(sid, probe, f'probe carries no state for step {sid}')
 
@@ -628,12 +628,19 @@ class TheFirstRunOpensTheWizard(_Sandbox):
 class TheWindowIsBilingual(_Sandbox):
     """Makinenin dilini yanlış tahmin etmenin bedeli, iki satır fazladan metinden büyük."""
 
-    def test_both_languages_are_printed(self):
+    def test_only_the_chosen_language_is_printed(self):
+        """v0.6.2: iki dil birden basılıyordu; yabancı kullanıcı İngilizce ekranda Türkçe
+        satır gördü (değerlendirme 2026-11-15). Artık yalnız seçili dil — varsayılan EN."""
         from usage import i18n
-        lines = i18n.both('panel_running', url='http://127.0.0.1:8770')
-        self.assertEqual(len(lines), 2)
-        self.assertNotEqual(lines[0], lines[1])
-        self.assertTrue(all('127.0.0.1:8770' in line for line in lines))
+        with mock.patch.dict(os.environ, {'UT_LANG': 'en'}):
+            lines = i18n.both('panel_running', url='http://127.0.0.1:8770')
+            self.assertEqual(lines, ['The panel is running at http://127.0.0.1:8770'])
+        with mock.patch.dict(os.environ, {'UT_LANG': 'tr'}):
+            self.assertEqual(i18n.both('panel_running', url='x'), ['Panel çalışıyor: x'])
+        env = {k: v for k, v in os.environ.items() if k not in ('UT_LANG', 'LANG', 'LC_ALL')}
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch('usage.platform.is_windows', return_value=False):
+            self.assertEqual(i18n.language(), 'en')            # no hint → English
 
     def test_the_language_can_be_forced(self):
         from usage import i18n
@@ -800,13 +807,14 @@ class ThePortIsAlreadyTaken(unittest.TestCase):
         with mock.patch.object(server, 'PORT', port), \
                 mock.patch.object(server, 'ThreadingHTTPServer', side_effect=boom), \
                 mock.patch.object(server, '_server_answering', return_value=False), \
+                mock.patch.dict(os.environ, {'UT_LANG': 'en'}), \
                 mock.patch('sys.stdout', out), mock.patch('sys.stderr', io.StringIO()):
             code = server.main([])
         self.assertEqual(server.EXIT_PORT_BUSY, code)
         text = out.getvalue()
         self.assertIn(str(port), text)
         self.assertIn('already taken', text)                 # English line
-        self.assertIn('zaten dolu', text)                    # ...and Turkish
+        self.assertNotIn('zaten dolu', text)                 # v0.6.2: one language, no mix
         self.assertIn('USAGE_PORT', text)                    # a stranger → change the port
 
     def test_a_busy_port_held_by_our_own_copy_points_at_the_panel(self):
@@ -815,6 +823,7 @@ class ThePortIsAlreadyTaken(unittest.TestCase):
         with mock.patch.object(server, 'ThreadingHTTPServer',
                                side_effect=OSError(98, 'Address already in use')), \
                 mock.patch.object(server, '_server_answering', return_value=True), \
+                mock.patch.dict(os.environ, {'UT_LANG': 'en'}), \
                 mock.patch('sys.stdout', out), mock.patch('sys.stderr', io.StringIO()):
             code = server.main([])
         self.assertEqual(server.EXIT_PORT_BUSY, code)

@@ -39,12 +39,12 @@ def _build(days: int) -> dict:
         return None
     card = {'id': PROVIDER_ID, 'name': PROVIDER_NAME, 'kind': 'local',
             'available': True, 'currency': None, 'error': None,
-            'note': 'Yerel modeller — ücretsiz, $ maliyeti yok.'}
+            'note': 'Local models — free, no $ cost.'}
     try:
         tags = _get('/api/tags') or {}
     except Exception:
         return {**card, 'status': 'offline',
-                'note': 'Binary kurulu, servis kapalı. `ollama serve` ile başlat.',
+                'note': 'Binary installed, service not running. Start it with `ollama serve`.',
                 'models': [], 'running': []}
 
     models = []

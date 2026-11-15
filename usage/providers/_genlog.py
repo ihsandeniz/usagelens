@@ -101,10 +101,10 @@ def nodata_card(pid, name, note):
 def _truncation_note(scanned) -> str:
     """Kullanıcıya neyin eksik olduğunu söyleyen cümle. Sessiz kesme yasak."""
     if scanned.get('truncatedReason') == 'files':
-        return (f'⚠️ Tarama {MAX_FILES} dosyada durdu — gösterilen toplam EKSİK, '
-                f'gerçek kullanım daha yüksek.')
-    return (f'⚠️ En az bir dosya {MAX_LINES:,} satırda kesildi — gösterilen toplam EKSİK, '
-            f'gerçek kullanım daha yüksek.').replace(',', '.')
+        return (f'⚠️ Scan stopped at {MAX_FILES} files — the shown total is INCOMPLETE, '
+                f'real usage is higher.')
+    return (f'⚠️ At least one file was cut at {MAX_LINES:,} lines — the shown total is INCOMPLETE, '
+            f'real usage is higher.')
 
 
 def tokens_card(pid, name, scanned, note):

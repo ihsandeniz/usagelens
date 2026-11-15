@@ -54,7 +54,7 @@ def _build(days: int) -> dict:
             data = _get(path, key)
         except urllib.error.HTTPError as e:
             if e.code in (401, 403):
-                return {**card, 'status': 'error', 'error': f'HTTP {e.code} (geçersiz/yetersiz key)'}
+                return {**card, 'status': 'error', 'error': f'HTTP {e.code} (invalid/insufficient key)'}
             continue
         except Exception:
             continue
@@ -62,12 +62,12 @@ def _build(days: int) -> dict:
         if bal is not None:
             # Novita bakiyeyi bazen "kuruş" (1/100) tutar — ham değeri koru, not düş
             card['balance'] = {'remaining': round(bal, 4)}
-            card['note'] = (f'Bakiye {path} üzerinden (uç ölçüldü; şema ve para birimi '
-                            f'canlı anahtarla doğrulanmadı).')
+            card['note'] = (f'Balance via {path} (endpoint measured; schema and currency '
+                            f'not verified with a live key).')
             return card
     return {**card, 'status': 'error',
-            'error': 'Uç yanıt verdi ama tanınan bir bakiye alanı yok — '
-                     'şema canlı anahtarla doğrulanmalı (rakam uydurulmadı)'}
+            'error': 'Endpoint answered but has no recognised balance field — '
+                     'schema needs a live-key check (no number made up)'}
 
 
 def collect(days: int = 30) -> dict:

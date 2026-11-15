@@ -37,6 +37,42 @@ _env_url="${USAGE_URL:-}"          # env wins over the config file, not the othe
 [ -n "$_env_url" ] && USAGE_URL="$_env_url"
 URL="${USAGE_URL:-http://127.0.0.1:8770}/v1/usage"
 
+# ── Dil: varsayılan İngilizce; Türkçe yalnız UT_LANG=tr ya da tr_* sistem dili ────────
+case "${UT_LANG:-}" in
+  tr*) L=tr ;; en*) L=en ;;
+  *) case "${LC_ALL:-${LANG:-}}" in tr*|TR*) L=tr ;; *) L=en ;; esac ;;
+esac
+if [ "$L" = tr ]; then
+  M_NOANSWER="sunucu yanıt vermedi"; M_BADJSON="yanıt geçerli JSON değil"
+  M_SHAPE="besleyici çıktı üretemedi (beklenmeyen veri şekli)"
+  M_SHOWN="gösterilen ölçüm"; M_SECAGO="sn önceki"; M_RESET="pencere sıfırlandı"
+  M_STALE="bayat veri"; M_AGO="önce"; M_SVCOFF="servis kapalı"
+  M_MISSING="kurulu değil — rozet buna ihtiyaç duyar. Kur:"; U_D=g; U_H=sa; U_M=dk
+else
+  M_NOANSWER="server did not answer"; M_BADJSON="response is not valid JSON"
+  M_SHAPE="feeder could not read the response (unexpected shape)"
+  M_SHOWN="showing the reading from"; M_SECAGO="s ago"; M_RESET="window reset"
+  M_STALE="stale data"; M_AGO="ago"; M_SVCOFF="service off"
+  M_MISSING="is not installed — the badge needs it. Install:"; U_D=d; U_H=h; U_M=m
+fi
+
+# ── Eksik araç: "offline" demek yanlış teşhis — sunucu açık olabilir, eksik olan curl/jq ──
+pkg_cmd() {
+  if   command -v pacman  >/dev/null 2>&1; then echo "sudo pacman -S $1"
+  elif command -v apt-get >/dev/null 2>&1; then echo "sudo apt install $1"
+  elif command -v dnf     >/dev/null 2>&1; then echo "sudo dnf install $1"
+  elif command -v zypper  >/dev/null 2>&1; then echo "sudo zypper install $1"
+  elif command -v apk     >/dev/null 2>&1; then echo "sudo apk add $1"
+  else echo "$1"; fi
+}
+for _tool in curl jq; do
+  if ! command -v "$_tool" >/dev/null 2>&1; then
+    printf '{"text":"⚠ %s","tooltip":"usage-tracker: %s %s %s","class":"off"}\n' \
+      "$_tool" "$_tool" "$M_MISSING" "$(pkg_cmd "$_tool")"
+    exit 0
+  fi
+done
+
 # ── Son iyi ölçümün kopyası ──────────────────────────────────────────────────
 # Sunucu bir turu kaçırdığında rozetin BOŞALMAMASI için. Yoksa waybar `interval`i kadar
 # (30 sn) hiçbir sayı görünmez ve arka arkaya kaçan turlarda rozet dakikalarca ölü kalır —
@@ -52,10 +88,10 @@ emit_offline() {   # $1 = tooltip'e eklenecek sebep
     _mt="$(stat -c %Y "$CACHE" 2>/dev/null || echo 0)"
     _age=$(( _now - _mt ))
     if [ "$_age" -ge 0 ] && [ "$_age" -lt "$CACHE_MAX_AGE" ]; then
-      if jq -c --arg age "$_age" --arg why "$1" \
+      if jq -c --arg age "$_age" --arg why "$1" --arg shown "$M_SHOWN" --arg ago "$M_SECAGO" \
            '.text = (.text + " ⋯")
             | .tooltip = ((.tooltip // "") + "\n<span color=\"#8fb6d6\">⋯ " + $why
-                          + " — gösterilen ölçüm " + $age + " sn önceki</span>")' \
+                          + " — " + $shown + " " + $age + " " + $ago + "</span>")' \
            "$CACHE" 2>/dev/null; then
         return 0
       fi
@@ -79,19 +115,21 @@ json="$(echo "$response" | head -n-1)"
 
 # Status 200 değilse veya boş yanıt → offline
 if [ "$http_code" != "200" ] || [ -z "$json" ]; then
-  emit_offline "sunucu yanıt vermedi"
+  emit_offline "$M_NOANSWER"
   exit 0
 fi
 
 # JSON geçerliliğini doğrula (bozuk JSON/HTML hata sayfası, yarım kesilmiş gövde)
 if ! echo "$json" | jq -e . >/dev/null 2>&1; then
-  emit_offline "yanıt geçerli JSON değil"
+  emit_offline "$M_BADJSON"
   exit 0
 fi
 
 # Generic zenginleştirilmiş tooltip — tüm sağlayıcılar üzerinde döngü
 # Kritik: opsiyonel alan erişiminde //null guard + select(.) kullan → boş stream hiç output vermez
-out="$(echo "$json" | jq -c --arg pid "$PROVIDER" '
+out="$(echo "$json" | jq -c --arg pid "$PROVIDER" --arg m_reset "$M_RESET" --arg m_stale "$M_STALE" \
+              --arg m_ago "$M_AGO" --arg m_svcoff "$M_SVCOFF" \
+              --arg u_d "$U_D" --arg u_h "$U_H" --arg u_m "$U_M" '
   def money(v; curr):
     if v == null then "—"
     else
@@ -119,9 +157,9 @@ out="$(echo "$json" | jq -c --arg pid "$PROVIDER" '
     ((sec // 0) | floor) as $s
     | if $s <= 0 then "" else
       ($s / 86400 | floor) as $d | (($s % 86400) / 3600 | floor) as $h | (($s % 3600) / 60 | floor) as $m
-      | (if $d > 0 then ($d|tostring)+"g"+($h|tostring)+"sa"
-         elif $h > 0 then ($h|tostring)+"sa"+($m|tostring)+"dk"
-         else ($m|tostring)+"dk" end)
+      | (if $d > 0 then ($d|tostring)+$u_d+($h|tostring)+$u_h
+         elif $h > 0 then ($h|tostring)+$u_h+($m|tostring)+$u_m
+         else ($m|tostring)+$u_m end)
     end;
   def rst(sec): (dur(sec)) as $t | (if $t == "" then "" else "  <span color=\"#8fb6d6\">↺" + $t + "</span>" end);
 
@@ -139,7 +177,7 @@ out="$(echo "$json" | jq -c --arg pid "$PROVIDER" '
     | if $b == null then ""
       else "\n  " + cbar($b.pct; $th) + " " + $lbl + " " + cpct($b.pct; $th)
            + rst($b.resetInSec)
-           + (if ($b.expired // false) then "  <span color=\"#8fb6d6\">↺ pencere sıfırlandı</span>" else "" end)
+           + (if ($b.expired // false) then "  <span color=\"#8fb6d6\">↺ " + $m_reset + "</span>" else "" end)
       end;
   def limbars(lim; $th):
     ((lim) // null) as $l
@@ -180,7 +218,7 @@ out="$(echo "$json" | jq -c --arg pid "$PROVIDER" '
       # Bayat veri işaretsiz gösterilmez. Ağ kesilince son iyi yüzde donuyor; rozet aynı
       # rengi göstermeye devam ettiği için kullanıcı taze bir sayıya baktığını sanıyordu.
       + (if ($claude.live.stale // false) then
-          "\n  <span color=\"#ffa500\">⚠ bayat veri" + (if ($claude.live.ageSec // 0) > 0 then " · " + dur($claude.live.ageSec) + " önce" else "" end) + "</span>"
+          "\n  <span color=\"#ffa500\">⚠ " + $m_stale + (if ($claude.live.ageSec // 0) > 0 then " · " + dur($claude.live.ageSec) + " " + $m_ago else "" end) + "</span>"
         else "" end)
       + "\n  <span color=\"#8fb6d6\">💰</span> today " + money($claude.spend.today; ($claude.spend.currency // "USD"))
         + (if ($claude.spend.yesterday // 0) > 0 then " · yester " + money($claude.spend.yesterday; ($claude.spend.currency // "USD")) else "" end)
@@ -213,11 +251,11 @@ out="$(echo "$json" | jq -c --arg pid "$PROVIDER" '
           (if (.status // "") != "offline" then
             "\n<b>" + .name + "</b>  models: " + ((.modelCount // 0) | tostring)
             + (if ((.running // []) | length) > 0 then " (running: " + ((.running | length) | tostring) + ")" else "" end)
-          else "\n<b>" + .name + "</b>  <span color=\"#8fb6d6\">servis kapalı</span>" end)
+          else "\n<b>" + .name + "</b>  <span color=\"#8fb6d6\">" + $m_svcoff + "</span>" end)
         elif .kind == "quota" then
           "\n<b>" + .name + "</b>"
           + "\n  " + cbar(.quota.pct; $th) + " " + cpct(.quota.pct; $th)
-          + "  <span color=\"#8fb6d6\">" + ((.quota.used // 0)|tostring) + "/" + ((.quota.limit // 0)|tostring) + " " + (.quota.unit // "birim") + "</span>"
+          + "  <span color=\"#8fb6d6\">" + ((.quota.used // 0)|tostring) + "/" + ((.quota.limit // 0)|tostring) + " " + (.quota.unit // "units") + "</span>"
           + (if (.quota.reset // 0) > 0 then rst(.quota.reset - now) else "" end)
         else "" end
       )] | join("")
@@ -240,7 +278,7 @@ out="$(echo "$json" | jq -c --arg pid "$PROVIDER" '
 # besleyen sahte sunucu rozeti yok ediyordu. Kaybolmak yerine ya son ölçüm ya `○ —` görünsün —
 # rozetin görevi zaten "duvara ne kadar yakınım"ı söylemek; sessizce yokolmak yanıltıcıdır.
 if [ -z "${out:-}" ] || ! printf '%s' "$out" | jq -e . >/dev/null 2>&1; then
-  emit_offline "besleyici çıktı üretemedi (beklenmeyen veri şekli)"
+  emit_offline "$M_SHAPE"
   exit 0
 fi
 

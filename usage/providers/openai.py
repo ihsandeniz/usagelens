@@ -62,7 +62,7 @@ def _build(days: int) -> dict:
     try:
         page = _get(f'/organization/costs?start_time={month_start}&bucket_width=1d&limit=31', key)
     except urllib.error.HTTPError as e:
-        hint = ' (Admin API key gerekli — proje key\'i Costs API\'ye erişemez)' if e.code in (401, 403) else ''
+        hint = ' (Admin API key required — a project key cannot access the Costs API)' if e.code in (401, 403) else ''
         return {**card, 'status': 'error', 'error': f'HTTP {e.code} ({e.reason}){hint}'}
     except Exception as e:
         return {**card, 'status': 'error', 'error': f'{type(e).__name__}: {e}'}
@@ -88,7 +88,7 @@ def _build(days: int) -> dict:
     card['spend'] = {'today': _round(today_usd), 'month': _round(month_usd)}
     card['byDay'] = by_day
     card['tier'] = 'org'
-    card['note'] = 'Organizasyon Costs API (gerçek fatura). Admin key ile.'
+    card['note'] = 'Organization Costs API (real bill). Requires an Admin key.'
     return card
 
 

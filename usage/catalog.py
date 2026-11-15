@@ -150,7 +150,7 @@ def _read_user() -> tuple:
     try:
         payload = json.loads(text)
     except ValueError:
-        print(f'warning: {p} bozuk JSON — yok sayılıyor', file=sys.stderr)
+        print(f'warning: {p} is broken JSON — ignored', file=sys.stderr)
         return {}, {}
     providers, meta = _from_own_shape(payload)
     meta.setdefault('generatedAt', _mtime_date(p))
@@ -219,10 +219,10 @@ def _age_days(generated_at):
 
 
 _SOURCE_LABEL = {
-    'user': 'kendi çektiğimiz katalog',
+    'user': 'catalogue we fetched',
     'hermes': 'Hermes CLI cache',
-    'bundled': 'pakete gömülü snapshot',
-    'none': 'yok',
+    'bundled': 'bundled snapshot',
+    'none': 'no catalogue',
 }
 
 
@@ -241,11 +241,11 @@ def status() -> dict:
 
     warning = None
     if src == 'none' or model_count == 0:
-        warning = ('Fiyat kataloğu yüklenemedi — gösterilen $ tutarları eksik olabilir. '
-                   '`python3 -m usage.catalog --update` ile tazeleyin.')
+        warning = ('Price catalogue could not be loaded — shown $ amounts may be incomplete. '
+                   'Refresh with `python3 -m usage.catalog --update`.')
     elif stale:
-        warning = (f'Fiyat kataloğu {age} günlük ({_SOURCE_LABEL[src]}) — fiyatlar değişmiş '
-                   f'olabilir. `python3 -m usage.catalog --update` ile tazeleyin.')
+        warning = (f'Price catalogue is {age} days old ({_SOURCE_LABEL[src]}) — prices may have '
+                   f'changed. Refresh with `python3 -m usage.catalog --update`.')
 
     return {
         'source': src,
@@ -272,7 +272,7 @@ def _fetch(url: str) -> dict:
 def _payload_from_remote(url: str) -> dict:
     providers = _from_models_dev_shape(_fetch(url))
     if not providers:
-        raise RuntimeError(f'{url} beklenen biçimi döndürmedi (fiyatlı model bulunamadı)')
+        raise RuntimeError(f'{url} did not return the expected format (no priced model found)')
     return {'_meta': {'generatedAt': date.today().isoformat(), 'source': url},
             'providers': providers}
 
@@ -308,13 +308,13 @@ def gomulu_sorunlari(bugun: date = None) -> list:
     try:
         yas = ((bugun or date.today()) - date.fromisoformat(str(tarih)[:10])).days
     except ValueError:
-        sorunlar.append(f'gömülü katalogun tarihi okunamadı: {tarih!r}')
+        sorunlar.append(f'bundled catalogue date unreadable: {tarih!r}')
     else:
         if yas > STALE_AFTER_DAYS:
-            sorunlar.append(f'gömülü katalog {yas} günlük (sınır {STALE_AFTER_DAYS})')
+            sorunlar.append(f'bundled catalogue is {yas} days old (limit {STALE_AFTER_DAYS})')
     eksik = [m for m in GEREKLI_MODELLER if m not in providers.get('anthropic', {})]
     if eksik:
-        sorunlar.append('gömülü katalogda eksik model: ' + ', '.join(eksik))
+        sorunlar.append('models missing from bundled catalogue: ' + ', '.join(eksik))
     return sorunlar
 
 
@@ -322,22 +322,22 @@ def _main(argv) -> int:
     _paths.ensure_utf8_output()
     if '--update' in argv:
         st = update()
-        print(f"güncellendi → {st['path']}\n"
-              f"{st['modelCount']} model / {st['providerCount']} sağlayıcı · {st['generatedAt']}")
+        print(f"updated → {st['path']}\n"
+              f"{st['modelCount']} model / {st['providerCount']} providers · {st['generatedAt']}")
         return 0
     if '--build-bundle' in argv:
         dest = build_bundle()
         size_kb = dest.stat().st_size / 1024
         st = status()
-        print(f'gömülü snapshot yazıldı → {dest} ({size_kb:.1f} KB)\n'
-              f"{st['modelCount']} model / {st['providerCount']} sağlayıcı")
+        print(f'bundled snapshot written → {dest} ({size_kb:.1f} KB)\n'
+              f"{st['modelCount']} model / {st['providerCount']} providers")
         return 0
     if '--check-bundle' in argv:
         sorunlar = gomulu_sorunlari()
         for s in sorunlar:
-            print(f'✗ {s} — `python3 -m usage.catalog --build-bundle` ile yenileyin')
+            print(f'✗ {s} — rebuild with `python3 -m usage.catalog --build-bundle`')
         if not sorunlar:
-            print('✓ gömülü katalog güncel')
+            print('✓ bundled catalogue up to date')
         return 1 if sorunlar else 0
     st = status()
     for k in ('source', 'sourceLabel', 'path', 'generatedAt', 'ageDays', 'stale',

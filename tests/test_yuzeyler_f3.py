@@ -133,16 +133,19 @@ class SureMetni(unittest.TestCase):
         return f['etaText']
 
     def test_gun_kademesi_ve_sa(self):
-        self.assertRegex(self._metin(69), r'2g 2[01]sa')
+        self.assertRegex(self._metin(69), r'2d 2[01]h')
 
     def test_saat_sa_yazilir(self):
-        self.assertRegex(self._metin(2), r'[12]sa')
+        self.assertRegex(self._metin(2), r'[12]h')
         self.assertNotRegex(self._metin(2), r'\d+s\b')
 
     @unittest.skipUnless(shutil.which('jq'), 'jq yok')
     def test_waybar_sure_birimi(self):
         src = (REPO / 'surface' / 'waybar-usage.sh').read_text(encoding='utf-8')
-        self.assertIn('+"sa"', src.replace(' ', ''))
+        # v0.6.2: birim dile bağlı ($u_h) — TR 'sa', EN 'h'; saat asla 's' (saniyeyle karışır)
+        self.assertIn('($h|tostring)+$u_h', src.replace(' ', ''))
+        self.assertIn('U_H=sa', src)
+        self.assertIn('U_H=h;', src)
         self.assertNotIn('($h|tostring)+"s"', src.replace(' ', ''))
 
     def test_panel_birimi(self):
@@ -171,10 +174,10 @@ class AbartiliUyariYok(unittest.TestCase):
         k = self._kart(4)
         self.assertTrue(k['truncated'])
         metin = ' '.join(k['warnings'])
-        self.assertNotIn('EKSİK', metin)
-        self.assertIn('en yeni 2 oturum', metin)
-        self.assertIn('Limit yüzdesi etkilenmez', metin)
-        self.assertNotIn('EKSİK', k.get('note', ''))
+        self.assertNotIn('INCOMPLETE', metin)
+        self.assertIn('newest 2 sessions', metin)
+        self.assertIn('Limit % is unaffected', metin)
+        self.assertNotIn('INCOMPLETE', k.get('note', ''))
 
 
 if __name__ == '__main__':

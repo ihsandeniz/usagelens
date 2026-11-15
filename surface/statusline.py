@@ -262,11 +262,62 @@ def gozlem_ani(payload, now: float) -> float:
     return now
 
 
-def main():
+WRAP_TIMEOUT_SN = 5
+
+
+def wrapped_line(raw: str):
+    """`--wrap`: kurulum sihirbazı kullanıcının kendi statusLine'ını bizimkiyle sardıysa onu
+    aynı stdin ile koştur ve çıktısını aynen döndür — kullanıcının satırı değişmesin. Komut
+    yoksa, hata verirse ya da boş basarsa None (o zaman kendi satırımız basılır)."""
     try:
-        payload = json.loads(sys.stdin.read() or '{}')
+        from usage import claude_statusline
+        cmd = claude_statusline.wrapped_command()
     except Exception:
+        cmd = None
+    if not cmd:
+        return None
+    import subprocess
+    try:
+        proc = subprocess.run(cmd, shell=True, input=raw, capture_output=True, text=True,
+                              encoding='utf-8', errors='replace', timeout=WRAP_TIMEOUT_SN)
+    except Exception:
+        return None
+    out = (proc.stdout or '').rstrip('\n')
+    return out or None
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    raw = sys.stdin.read() or '{}'
+    try:
+        payload = json.loads(raw)
+    except Exception:
+        payload = None
+    if '--wrap' in argv:
+        if isinstance(payload, dict):
+            kaydet(payload)
+        out = wrapped_line(raw)
+        if out is not None:
+            _bas(out)
+            return
+        if not isinstance(payload, dict):
+            return
+        _ciz(payload, kaydedildi=True)
         return
+    if payload is None:
+        return
+    _ciz(payload)
+
+
+def _bas(metin: str):
+    try:
+        print(metin)
+    except UnicodeEncodeError:  # Windows cp1252 konsolu bant karakterlerini basamıyor
+        sys.stdout.buffer.write((metin + '\n').encode('utf-8', 'replace'))
+
+
+def kaydet(payload) -> dict:
+    """Limit yüzdelerini kayda yaz; çıkardığı pencereleri döndürür."""
     windows = extract(payload)
     if windows:
         try:
@@ -292,6 +343,11 @@ def main():
                 limitseri.ekle(birlesik, at, 'statusline')
         except Exception:
             pass
+    return windows
+
+
+def _ciz(payload, kaydedildi=False):
+    windows = extract(payload) if kaydedildi else kaydet(payload)
     parcalar = []
     okuma = baglam_okuma(payload)
     if okuma and okuma[0] > 0:
@@ -301,11 +357,8 @@ def main():
     if windows:
         parcalar.append(line(windows))
     if parcalar:
-        metin = '  · '.join(parcalar)
-        try:
-            print(metin)
-        except UnicodeEncodeError:  # Windows cp1252 konsolu bant karakterlerini basamıyor
-            sys.stdout.buffer.write((metin + '\n').encode('utf-8', 'replace'))
+        _bas('  · '.join(parcalar))
+
 
 
 if __name__ == '__main__':

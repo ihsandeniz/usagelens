@@ -14,7 +14,7 @@ from setuptools import setup
 from setuptools.command.build_py import build_py
 
 ROOT = Path(__file__).resolve().parent
-RESOURCES = ('web', 'data', 'price_overrides.json')
+RESOURCES = ('web', 'data', 'price_overrides.json', 'surface/statusline.py')
 
 
 class build_py_with_resources(build_py):

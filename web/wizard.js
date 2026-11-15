@@ -69,6 +69,10 @@ const STEP_TEXT = {
                 'Windows: a hidden launcher in your Startup folder. Linux: a systemd user service.'],
     shortcut:  ['Add a shortcut that opens the panel',
                 'One click: it opens the panel, starting the server first if nothing is running.'],
+    statusline: ['Show live limits (Claude Code status line)',
+                 'Claude Code already receives your limit % with every reply. This adds a ' +
+                 'status line hook to its settings.json (backed up first) so the panel shows ' +
+                 'live limits with no extra request. Your own status line keeps showing.'],
     keys:      ['Provider API keys (optional)',
                 'Only needed for hosted providers like OpenRouter. Claude usage is read from ' +
                 'your own transcripts and needs no key.'],
@@ -83,6 +87,10 @@ const STEP_TEXT = {
                 'Windows: Başlangıç klasörüne gizli başlatıcı. Linux: systemd kullanıcı servisi.'],
     shortcut:  ['Paneli açan bir kısayol ekle',
                 'Tek tık: paneli açar, sunucu kapalıysa önce onu başlatır.'],
+    statusline: ['Canlı limitleri göster (Claude Code durum satırı)',
+                 'Claude Code limit yüzdeni her cevapla zaten alıyor. Bu adım onun ' +
+                 'settings.json dosyasına (önce yedekleyerek) bir durum satırı kancası ekler; ' +
+                 'panel canlı limiti ek istek atmadan gösterir. Kendi durum satırın görünmeye devam eder.'],
     keys:      ['Sağlayıcı API anahtarları (isteğe bağlı)',
                 'Yalnız OpenRouter gibi dış sağlayıcılar için gerekir. Claude kullanımı senin ' +
                 'kendi kayıtlarından okunur, anahtar istemez.'],
@@ -128,6 +136,8 @@ function statusOf(id, probe) {
   if (id === 'autostart') return s.enabled ? t('already') : t('notSet');
   if (id === 'shortcut') return s.exists ? t('already') : t('notSet');
   if (id === 'keys') return `${(s.set || []).length}/${(s.known || []).length} ${t('set')}`;
+  if (id === 'statusline') return s.installed ? t('already')
+    : s.state === 'no-claude' ? (tr ? 'Claude Code yok' : 'no Claude Code') : t('notSet');
   if (id === 'verify') return s.server ? (tr ? 'sunucu ayakta' : 'server up')
                                        : (tr ? 'sunucu kapalı' : 'server not running');
   return '';
@@ -268,6 +278,7 @@ function isDone(id) {
   if (id === 'autostart') return !!s.enabled;
   if (id === 'shortcut') return !!s.exists;
   if (id === 'keys') return (s.set || []).length > 0;
+  if (id === 'statusline') return !!s.installed;
   return false;
 }
 

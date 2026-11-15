@@ -295,20 +295,20 @@ def _compute_forecast(pct, elapsed_ms, reset_at_ms, now_ms, window_ms):
     # "s" saat için belirsizdi: "69s 16dk" saniye ya da gün gibi okunuyordu.
     parts = []
     if days > 0:
-        parts.append(f'{days}g')
+        parts.append(f'{days}d')
     if hours > 0:
-        parts.append(f'{hours}sa')
+        parts.append(f'{hours}h')
     if days == 0 and (minutes > 0 or hours == 0):
-        parts.append(f'{minutes}dk')
+        parts.append(f'{minutes}m')
     if seconds > 0 and days == 0 and hours == 0 and minutes < 5:
-        parts.append(f'{seconds}sn')
+        parts.append(f'{seconds}s')
 
-    eta_text = ' '.join(parts) if parts else '≈ şimdi'
+    eta_text = f'full in ≈ {" ".join(parts)}' if parts else 'full ≈ now'
 
     return {
         'willExceed': True,
         'etaMs': int(projected_full_at),
-        'etaText': f'≈ {eta_text} sonra dolar',
+        'etaText': eta_text,
     }
 
 
@@ -397,6 +397,40 @@ def _reset_in(resets_at, now_ms):
     return ms, int((ms - now_ms) / 1000)
 
 
+def _statusline_state():
+    try:
+        from . import claude_statusline
+        return claude_statusline.probe().get('state')
+    except Exception:
+        return None
+
+
+def live_hint(lv: dict):
+    """Canlı limit neden yok / ne zaman gelir — tek sade cümle (İngilizce; panel kendi
+    diliyle `code`'dan kurar). Her zaman nesne (wire şekli sabit); canlı ve tazeyse
+    `{'code': None, 'text': None}`."""
+    none = {'code': None, 'text': None}
+    if not isinstance(lv, dict):
+        return none
+    if lv.get('ok') and not lv.get('stale'):
+        return none
+    sl = lv.get('statusline')
+    retry = lv.get('retryAtMs')
+    wait = ''
+    if lv.get('rateLimited') and isinstance(retry, (int, float)):
+        mins = max(1, round((retry / 1000 - time.time()) / 60))
+        wait = f" Anthropic's usage endpoint asked us to wait ~{mins} min before asking again."
+    if sl == 'present':
+        return {'code': 'sl_waiting', 'text': 'Status line is installed — live limits appear '
+                'after your next message in Claude Code.' + wait}
+    if sl == 'no-claude':
+        return {'code': 'no_claude', 'text': 'Claude Code is not set up on this machine, so there '
+                'are no live limits — spend still works.'}
+    return {'code': 'sl_missing', 'text': 'Live limits need one setup step: run `usage-tracker '
+            'setup` (or ./setup.sh) and accept "Show live limits". They appear after your next '
+            'Claude Code message.' + wait}
+
+
 def _overlay_live(out: dict, now_ms: int):
     """Anthropic'in canlı gerçek utilization %'sini limit barlarına bindir (kalibrasyonsuz)."""
     lv = live.fetch()
@@ -408,7 +442,12 @@ def _overlay_live(out: dict, now_ms: int):
                    # bunlar olmadan panel "donuk" görünür ama sebep söylemez
                    'staleReason': lv.get('staleReason'), 'retryAtMs': lv.get('retryAtMs'),
                    # 'statusline' = Claude Code'un kendi cevaplarından (ağsız), 'api' = oauth/usage
-                   'source': lv.get('source') or ('api' if lv.get('ok') else None)}
+                   'source': lv.get('source') or ('api' if lv.get('ok') else None),
+                   'reason': lv.get('reason') or ('ok' if lv.get('ok') else None)}
+    # Canlı yüzde yoksa panel "neden yok, ne yapmalı" cümlesini bundan kurar: durum satırı
+    # kurulu değilse çözüm bir kurulum adımıdır, 429 bitişini beklemek değil.
+    out['live']['statusline'] = _statusline_state()
+    out['live']['hint'] = live_hint(out['live'])
     if not lv.get('ok'):
         return
     stale = bool(lv.get('stale'))
@@ -452,46 +491,46 @@ def _overlay_live(out: dict, now_ms: int):
 
 def calibrate_usage(req) -> tuple:
     if not isinstance(req, dict):
-        return False, 'geçersiz gövde'
+        return False, 'invalid body'
     now_ms = int(time.time() * 1000)
 
     # Alan-bazlı parse — her alan kendi validation'ı
     try:
         sess_reset = int(req.get('sessionResetAtMs') or 0)
     except (TypeError, ValueError):
-        return False, 'sessionResetAtMs geçersiz'
+        return False, 'sessionResetAtMs invalid'
 
     try:
         week_reset = int(req.get('weeklyResetAtMs') or 0)
     except (TypeError, ValueError):
-        return False, 'weeklyResetAtMs geçersiz'
+        return False, 'weeklyResetAtMs invalid'
 
     try:
         sess_pct = float(req.get('sessionPct') or 0)
     except (TypeError, ValueError):
-        return False, 'sessionPct geçersiz'
+        return False, 'sessionPct invalid'
 
     try:
         week_pct = float(req.get('weeklyAllPct') or 0)
     except (TypeError, ValueError):
-        return False, 'weeklyAllPct geçersiz'
+        return False, 'weeklyAllPct invalid'
 
     try:
         mname = (req.get('weeklyModelName') or '').lower().strip()[:20] or None
     except (TypeError, ValueError, AttributeError):
-        return False, 'weeklyModelName geçersiz'
+        return False, 'weeklyModelName invalid'
 
     try:
         mod_pct = float(req.get('weeklyModelPct') or 0)
     except (TypeError, ValueError):
-        return False, 'weeklyModelPct geçersiz'
+        return False, 'weeklyModelPct invalid'
     if sess_reset and not (now_ms - 3600_000 <= sess_reset <= now_ms + 6 * 3600_000):
-        return False, 'oturum reset zamanı aralık dışı'
+        return False, 'session reset time out of range'
     if week_reset and not (now_ms - 3600_000 <= week_reset <= now_ms + 8 * 24 * 3600_000):
-        return False, 'haftalık reset zamanı aralık dışı'
+        return False, 'weekly reset time out of range'
     for p in (sess_pct, week_pct, mod_pct):
         if not (0 <= p <= 100):
-            return False, 'yüzde 0-100 aralığında olmalı'
+            return False, 'percent must be between 0 and 100'
 
     sess_win = USAGE_SESSION_WINDOW * 1000
     week_win = USAGE_WEEKLY_WINDOW * 1000
@@ -621,9 +660,9 @@ def compute_spend(days: int = 30) -> dict:
             {'model': model, 'tokens': unknown_tokens[model]}
             for model in sorted(unknown_tokens)
         ],
-        'note': '1M-context (opus[1m]) premium ve batch/service_tier indirimi ayrıştırılmaz; '
-                'estimate modelleri price_overrides.json ile düzeltilebilir; unknown fiyatlı '
-                'tokenlar $ toplamına dahil edilmez.',
+        'note': '1M-context (opus[1m]) premium and batch/service_tier discounts are not separated; '
+                'estimate models can be corrected via price_overrides.json; tokens with unknown '
+                'prices are not included in the $ total.',
     }
 
 
@@ -707,8 +746,8 @@ def compute_providers(days: int = 30) -> list:
 if __name__ == '__main__':
     # elle doğrulama: python3 -m usage.engine
     import pprint
-    print('=== LİMİTLER ==='); pprint.pprint(compute_usage())
-    print('\n=== HARCAMA (30g) ==='); s = compute_spend(30)
-    print(f"Today ${s['today']} · Yesterday ${s['yesterday']} · 30g ${s['total']} · complete={s['priceComplete']}")
+    print('=== LIMITS ==='); pprint.pprint(compute_usage())
+    print('\n=== SPEND (30d) ==='); s = compute_spend(30)
+    print(f"Today ${s['today']} · Yesterday ${s['yesterday']} · 30d ${s['total']} · complete={s['priceComplete']}")
     for m in s['byModel']:
         print(f"  {m['model']:34s} [{m['source']:8s}] ${m['usd']:.4f}")

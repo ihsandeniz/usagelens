@@ -360,9 +360,12 @@ class WheelInstall(unittest.TestCase):
         tree = ast.parse((REPO / 'setup.py').read_text(encoding='utf-8'))
         names = next(ast.literal_eval(n.value) for n in ast.walk(tree)
                      if isinstance(n, ast.Assign) and getattr(n.targets[0], 'id', '') == 'RESOURCES')
-        self.assertEqual(set(names), {'web', 'data', 'price_overrides.json'})
+        # surface/statusline.py: `usagelens statusline` (Claude Code durum satırı kancası)
+        # wheel'den de koşmalı — pipx kurulumunda kaynak ağacı yok (v0.6.2).
+        self.assertEqual(set(names), {'web', 'data', 'price_overrides.json', 'surface/statusline.py'})
         manifest = (REPO / 'MANIFEST.in').read_text(encoding='utf-8')
-        for line in ('graft web', 'graft data', 'include price_overrides.json'):
+        for line in ('graft web', 'graft data', 'include price_overrides.json',
+                     'include surface/statusline.py'):
             self.assertIn(line, manifest)
 
 

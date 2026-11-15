@@ -1,0 +1,67 @@
+# Maintainer: TODO — the AUR account owner (name <email>), set at publish time
+# DRAFT — the -git variant: builds whatever is on the default branch. Not on the AUR.
+# Same layout and the same single `_name` as ./PKGBUILD.
+#
+# Local test build (no network, no tag needed): put a clone at ./usage-tracker and run
+#   makepkg --skipchecksums   with   _src=git+file://$PWD/usage-tracker
+
+_name=usagelens
+pkgname=$_name-git
+pkgver=0.6.2.r0.g0000000
+pkgrel=1
+pkgdesc='Claude / AI usage, limits and real spend on your desktop — panel, waybar badge, CLI (stdlib only)'
+arch=('any')
+url='https://github.com/ihsandeniz/usage-tracker'
+license=('MIT')
+depends=('python>=3.9')
+optdepends=(
+  'curl: waybar badge feeder (surface/waybar-usage.sh)'
+  'jq: waybar badge feeder (surface/waybar-usage.sh)'
+  'chromium: floating widget (any Chromium-family browser works)'
+  'python-pyqt5: system tray icon (surface/usage-tray.py)'
+  'libnotify: desktop notifications for `usagelens watch --notify`'
+)
+makedepends=('git')
+provides=("$_name" 'usage-tracker')
+conflicts=("$_name" 'usage-tracker')
+_src="${_src:-git+https://github.com/ihsandeniz/usage-tracker.git}"
+source=("usage-tracker::$_src")
+sha256sums=('SKIP')
+_srcdir="usage-tracker"
+
+pkgver() {
+  cd "$srcdir/$_srcdir"
+  local v; v="$(sed -n "s/^VERSION = '\(.*\)'.*/\1/p" server.py)"
+  printf '%s.r%s.g%s' "$v" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
+package() {
+  cd "$srcdir/$_srcdir"
+  local lib="$pkgdir/usr/lib/$_name"
+
+  install -d "$lib"
+  cp -r --no-preserve=ownership usage web data surface "$lib/"
+  install -Dm644 server.py price_overrides.json -t "$lib/"
+  install -Dm755 setup.sh -t "$lib/"
+  install -d "$lib/packaging"
+  install -Dm644 packaging/*.py packaging/env.example packaging/usage-tracker.service.in \
+    -t "$lib/packaging/"
+  find "$lib" -name '__pycache__' -prune -exec rm -rf {} +
+  rm -f "$lib/surface/surface.conf"
+
+  # One command for every surface: `usagelens`, `usagelens setup`, `… guard`, …
+  # `usage-tracker` stays as the original name (docs, scripts and old installs use it).
+  install -d "$pkgdir/usr/bin"
+  printf '#!/bin/sh\nexec /usr/bin/python3 /usr/lib/%s/server.py "$@"\n' "$_name" \
+    > "$pkgdir/usr/bin/$_name"
+  chmod 755 "$pkgdir/usr/bin/$_name"
+  [ "$_name" = usage-tracker ] || ln -s "$_name" "$pkgdir/usr/bin/usage-tracker"
+
+  # systemd --user unit (opt-in: `systemctl --user enable --now usage-tracker`)
+  sed -e "s|@@ROOT@@|/usr/lib/$_name|g" -e "s|@@PYTHON@@|/usr/bin/python3|g" \
+    packaging/usage-tracker.service.in > usage-tracker.service
+  install -Dm644 usage-tracker.service -t "$pkgdir/usr/lib/systemd/user/"
+
+  install -Dm644 LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
+  install -Dm644 README.md README.tr.md -t "$pkgdir/usr/share/doc/$pkgname/"
+}

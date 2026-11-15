@@ -254,19 +254,19 @@ def geri_al(kaynak=None) -> dict:
     try:
         ham = _paths.Path(kaynak).read_text(encoding='utf-8')
     except FileNotFoundError:
-        return {'durum': 'yok', 'ornekler': [], 'neden': 'dosya yok'}
+        return {'durum': 'yok', 'ornekler': [], 'neden': 'no file'}
     except OSError as e:
         return {'durum': 'okunamadi', 'ornekler': [], 'neden': type(e).__name__}
     try:
         d = json.loads(ham, object_pairs_hook=_yalniz_izinli)
     except ValueError:
-        return {'durum': 'okunamadi', 'ornekler': [], 'neden': 'JSON bozuk'}
+        return {'durum': 'okunamadi', 'ornekler': [], 'neden': 'broken JSON'}
     del ham
     if not isinstance(d, dict) or d.get('version') != MASAUSTU_SURUM \
             or not isinstance(d.get('samples'), list):
         surum = d.get('version') if isinstance(d, dict) else None
         return {'durum': 'okunamadi', 'ornekler': [],
-                'neden': f'beklenmeyen biçim (version={surum!r})'}
+                'neden': f'unexpected format (version={surum!r})'}
     out = []
     for s in d['samples']:
         if not isinstance(s, dict) or not _sayi(s.get('t')) or not isinstance(s.get('u'), dict):
@@ -758,25 +758,25 @@ def _saat(t):
 
 
 def _sinav_yazdir(s):
-    print(f"turn: {s['turn']} · {'dilimli (≥5 puan)' if s['dilim'] else 'kesintisiz parça'}")
+    print(f"turn: {s['turn']} · {'sliced (≥5 points)' if s['dilim'] else 'continuous segment'}")
     for k, v in s['pencere'].items():
         o = v['ozet']
         cv = f"%{o['cv'] * 100:.0f}" if o['cv'] is not None else '—'
-        print(f"\n[{k}] gözlem {v['gozlem']} · aralık {o['aralik']} · ölçülen {o['olculen']} · "
-              f"medyan {o['medyan']} birim/%1 · CV {cv} · bayrak {o['bayrak']} · "
-              f"yerel kayıt yok {o['yerel_kayit_yok']}")
-        print('  başlangıç(UTC)  süre_dk  %0→%1   turn  oran      kat    durum')
+        print(f"\n[{k}] observations {v['gozlem']} · intervals {o['aralik']} · measured {o['olculen']} · "
+              f"median {o['medyan']} units/1% · CV {cv} · flagged {o['bayrak']} · "
+              f"no local record {o['yerel_kayit_yok']}")
+        print('  start(UTC)      dur_min  %0→%1   turn  rate      ratio  status')
         for a in v['araliklar']:
             print(f"  {_saat(a['t0'])}     {a['sure_sn'] / 60:6.0f}  {a['p0']:4.0f}→{a['p1']:<4.0f} "
                   f"{a['turn']:5d}  {a['oran'] if a['oran'] is not None else '—':<9} "
                   f"{a['kat'] if a['kat'] is not None else '—':<6} "
-                  f"{'⚑ 2× HIZLI' if a['bayrak'] else a['durum']}")
+                  f"{'⚑ 2× FAST' if a['bayrak'] else a['durum']}")
         for a in v['araliklar']:
             if a['bayrak']:
-                print(f"  ⚑ {_saat(a['t0'])}: oran {a['oran']} = temelin {a['kat']}×'i · "
-                      f"model {a['model']} · alt ajan %{a['alt_ajan'] * 100:.0f} · "
-                      f"önbellek-okuma %{a['onbellek_okuma'] * 100:.0f} · "
-                      f"tepe oturum %{a['tepe_oturum'] * 100:.0f}")
+                print(f"  ⚑ {_saat(a['t0'])}: rate {a['oran']} = {a['kat']}× baseline · "
+                      f"model {a['model']} · subagent {a['alt_ajan'] * 100:.0f}% · "
+                      f"cache-read {a['onbellek_okuma'] * 100:.0f}% · "
+                      f"top session {a['tepe_oturum'] * 100:.0f}%")
 
 
 if __name__ == '__main__':
@@ -790,6 +790,6 @@ if __name__ == '__main__':
         sys.exit(0)
     g = geri_al()
     zamanlar = sorted({o['t'] for o in g['ornekler']})
-    print(f"masaüstü geçmişi: {g['durum']} · {len(zamanlar)} örnek · {len(g['ornekler'])} gözlem"
+    print(f"desktop history: {g['durum']} · {len(zamanlar)} samples · {len(g['ornekler'])} observations"
           + (f" · {g['neden']}" if g['neden'] else ''))
-    print(f"seri: {yol()} · {len(oku())} gözlem")
+    print(f"series: {yol()} · {len(oku())} observations")

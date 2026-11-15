@@ -113,9 +113,11 @@ def _fetch_raw():
     tok, exp, tier = _read_token()
     now_ms = int(time.time() * 1000)
     if not tok:
-        return {'ok': False, 'error': 'token okunamadı', 'raw': None}
+        return {'ok': False, 'error': 'no Claude Code login found on this machine',
+                'reason': 'no_token', 'raw': None}
     if exp and exp <= now_ms:
-        return {'ok': False, 'error': 'token süresi dolmuş (Claude Code açıkken tazelenir)', 'raw': None}
+        return {'ok': False, 'error': 'Claude Code login expired (it refreshes while Claude Code runs)',
+                'reason': 'token_expired', 'raw': None}
     req = urllib.request.Request(USAGE_URL, headers={
         'Authorization': 'Bearer ' + tok,
         'anthropic-beta': BETA,
@@ -129,12 +131,13 @@ def _fetch_raw():
                 'windows': _parse(raw if isinstance(raw, dict) else {})}
     except urllib.error.HTTPError as e:
         out = {'ok': False, 'error': f'HTTP {e.code} ({e.reason})', 'raw': None,
-               'rateLimited': e.code == 429}
+               'rateLimited': e.code == 429,
+               'reason': 'rate_limited' if e.code == 429 else 'http'}
         if e.code == 429:
             out['retryAfterSec'] = _retry_after_sec(e.headers)
         return out
     except Exception as e:
-        return {'ok': False, 'error': f'{type(e).__name__}: {e}', 'raw': None}
+        return {'ok': False, 'error': f'{type(e).__name__}: {e}', 'reason': 'network', 'raw': None}
 
 
 def _disk_cache_path():
@@ -306,7 +309,7 @@ def _rate_limited(res, now: float) -> dict:
         stale = dict(_CACHE[1])
         stale.update({'ok': True, 'cached': True, 'staleReason': reason, **meta})
         return _with_freshness(stale, _CACHE[0], now)
-    return {'ok': False, 'error': reason, 'raw': None, 'cached': False,
+    return {'ok': False, 'error': reason, 'reason': 'rate_limited', 'raw': None, 'cached': False,
             'fetchedAtMs': None, 'ageSec': None, 'stale': False, **meta}
 
 

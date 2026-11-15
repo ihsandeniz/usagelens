@@ -1,14 +1,35 @@
-# usage-tracker — Linux için "Pane"
+# usagelens
 
-Tüm AI kullanımını, **limitini ve gerçek $ harcamasını tek yerde** gösteren, bağımlılıksız bir Linux aracı — [Pane](https://github.com/ItsJazii/pane) (yalnızca Windows) muadili.
+**Claude Code limitin, harcaman ve "limitimi ne yedi" — kendi masaüstünde, zaten diskinde
+duran dosyalardan.** Eski adı *usage-tracker*. Depo: `ihsandeniz/usage-tracker`.
 
-- **Web paneli** `http://127.0.0.1:8770` — harcama kartları, 30 günlük grafik, model tablosu, canlı limit barları.
-- **waybar rozeti** — bar'ında `◐ S13% W18%`, duvara ne kadar yaklaştığına göre renklenir.
-- **floating widget** — panelin taşınabilir, boyutlandırılabilir, her-zaman-üstte pencere hali.
+![rozet → panel → Limit Kara Kutusu (demo veri)](docs/demo.gif)
 
-**stdlib Python + Vanilla JS** ile yazıldı. `pip install` yok, Node yok, Rust yok. Yalnızca loopback.
+```bash
+pipx install git+https://github.com/ihsandeniz/usage-tracker.git && usagelens setup
+```
 
-> 🇬🇧 English: [README.md](README.md)
+`setup` her adımda neyi yazacağını yazmadan önce gösterir (her dosya önce yedeklenir;
+`usagelens setup --uninstall` geri alır). Sonra `usagelens panel` paneli
+`http://127.0.0.1:8770`'te açar. Hesap yok, telemetri yok, yalnız loopback, stdlib Python.
+
+- **Canlı limit, Claude Code'un bir sonraki cevabından itibaren.** Bir kurulum adımı Claude
+  Code'a durum satırı kancası ekler (seninki varsa görünmeye devam eder). Claude Code 5 saatlik
+  ve haftalık yüzdeni her cevapla zaten alıyor; kanca bunu kaydeder, Anthropic'in rate-limit'li
+  kullanım ucuna ek istek gitmez.
+- **Gerçek harcama.** Transcript'lerdeki token × gerçek model fiyatı: bugün, 30 gün, model başına.
+- **Nereden bakarsın:** web paneli, waybar rozeti `◐ S13% W18%`, floating widget, tepsi
+  ikonu, telefon rozeti, komut satırı.
+
+**Limit Kara Kutusu `/usage` ile aynı şey değil.** Claude Code'un `/usage`'ı *son* kullanımının
+skill, alt-ajan, MCP ve eklenti arasında nasıl bölündüğünü gösterir. Kara Kutu ise resmî limit
+yüzdesinin bütün pencereler boyunca her hareketini kaydeder ve aynı iş için bir pencere
+**alışkın olduğundan ~2× hızlı** yandıysa söyler — hata raporuna yapıştırılabilir isimsiz
+kanıtla (`usagelens kanit`).
+
+[Pane](https://github.com/ItsJazii/pane)'den (Windows) esinlendi; ayrı bir proje, bağlantısı yok.
+
+> 🇬🇧 English: [README.md](README.md) · tam başvuru (İngilizce): [docs/GUIDE.md](docs/GUIDE.md)
 
 ---
 
@@ -17,10 +38,10 @@ Tüm AI kullanımını, **limitini ve gerçek $ harcamasını tek yerde** göste
 ```bash
 git clone https://github.com/ihsandeniz/usage-tracker.git
 cd usage-tracker
-./setup.sh            # ★ sihirbaz: bağımlılık → sunucu → waybar → widget/tray → key → doğrulama
+./setup.sh            # ★ sihirbaz: bağımlılık → sunucu → waybar → widget/tray → canlı limit → key → doğrulama
 ```
 
-Yazmak yerine tıklamak istersen: `./setup.sh --ui` aynı altı adımı bir tarayıcı
+Yazmak yerine tıklamak istersen: `./setup.sh --ui` aynı yedi adımı bir tarayıcı
 penceresinde açar — her adım ne yazacağının **gerçek diff'ini** gösterir, yanında da
 "Geri al" düğmesi durur.
 
@@ -195,7 +216,7 @@ Sihirbazın doğrulama adımı sisteminize en uygun olanı önerir ve yapıştı
 |---|---|---|
 | **Harcama** | Bugün / Dün / 30 gün **$** + model bazlı + 30 günlük grafik | `~/.claude/projects/**/*.jsonl` token'ları × gerçek fiyat |
 | **Limit** | Oturum (5s) + Haftalık kullanım %'si, reset geri sayımı | Anthropic'in kendi `/api/oauth/usage` ucu (gerçek), yoksa yerel tahmin |
-| **Sağlayıcılar** | 16 adaptör: gerçek $ (OpenRouter, OpenAI, DeepSeek), kredi/kota (ElevenLabs, HuggingFace, Together, Novita, DeepInfra), yerel (Ollama, LM Studio, Jan), lokal-log token (Codex, Aider, Continue, Cody, Windsurf) | her sağlayıcının API'si / yerel dosyaları |
+| **Sağlayıcılar** | 16 adaptör: gerçek $ (OpenRouter, OpenAI), kota (ElevenLabs), yerel (Ollama, LM Studio, Jan), lokal-log token (Codex, Aider, Continue) — artı **deneysel** olanlar (DeepSeek, Novita, DeepInfra, Hugging Face, Together, Cody, Windsurf: başarılı bir yanıtları henüz hiç görülmedi, kartları `experimental` işaretli; ayrıntı [docs/GUIDE.md](docs/GUIDE.md#experimental-providers)) | her sağlayıcının API'si / yerel dosyaları |
 
 ### Veri gerçek mi?
 

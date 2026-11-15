@@ -58,7 +58,7 @@ def _build(days: int) -> dict:
     try:
         who = _get('/api/whoami-v2', key) or {}
     except urllib.error.HTTPError as e:
-        return {**base, 'kind': 'quota', 'status': 'error', 'error': f'HTTP {e.code} (geçersiz key)'}
+        return {**base, 'kind': 'quota', 'status': 'error', 'error': f'HTTP {e.code} (invalid key)'}
     except Exception as e:
         return {**base, 'kind': 'quota', 'status': 'error', 'error': f'{type(e).__name__}: {e}'}
     plan = (who.get('plan') or (who.get('periodEnd') and 'pro') or 'free')
@@ -73,11 +73,11 @@ def _build(days: int) -> dict:
                               'remaining': limit - used,
                               'pct': round(used / limit * 100, 1),
                               'unit': 'kredi', 'reset': None},
-                    'note': 'Kota /api/quota üzerinden (uç ölçüldü; şema doğrulanmadı).'}
+                    'note': 'Quota via /api/quota (endpoint measured; schema not verified).'}
     except Exception:
         pass
     return {**base, 'kind': 'quota', 'tier': str(plan), 'status': 'error',
-            'error': 'Key geçerli ama HF kullanım/kota API\'si doğrulanmadı'}
+            'error': 'Key valid but the HF usage/quota API is not verified'}
 
 
 def collect(days: int = 30) -> dict:

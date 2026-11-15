@@ -27,6 +27,7 @@
       ],
       "currency": "string",
       "error": "null",
+      "experimental": "bool",
       "id": "string",
       "kind": "string",
       "limit": {
@@ -198,19 +199,38 @@
       }
     },
     "live": {
-      "ageSec": "null",
+      "ageSec": "number",
       "cached": "bool",
-      "error": "string",
-      "fetchedAtMs": "null",
+      "error": "null",
+      "fetchedAtMs": "number",
+      "hint": {
+        "code": "null",
+        "text": "null"
+      },
       "ok": "bool",
       "rateLimitTier": "null",
       "rateLimited": "bool",
       "raw": "null",
+      "reason": "string",
       "retryAtMs": "null",
-      "source": "null",
+      "source": "string",
       "stale": "bool",
       "staleReason": "null",
-      "windows": {}
+      "statusline": "string",
+      "windows": {
+        "five_hour": {
+          "overage": "null",
+          "remaining": "null",
+          "resets_at": "number",
+          "utilization": "number"
+        },
+        "seven_day": {
+          "overage": "null",
+          "remaining": "null",
+          "resets_at": "number",
+          "utilization": "number"
+        }
+      }
     },
     "name": "string",
     "spend": {

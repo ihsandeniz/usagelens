@@ -83,7 +83,7 @@ def _parse(days: int) -> dict:
                     try:
                         o = json.loads(line)
                     except ValueError as e:
-                        print(f'Provider {PROVIDER_ID}: Bozuk JSON satırı {fp}:{line_idx}: {e}', file=sys.stderr)
+                        print(f'Provider {PROVIDER_ID}: broken JSON line {fp}:{line_idx}: {e}', file=sys.stderr)
                         continue
                     if not isinstance(o, dict):
                         continue
@@ -109,7 +109,7 @@ def _parse(days: int) -> dict:
             'byModel': model_list,
             'byDay': [],
             'sessions': len(models),
-            'note': 'Continue dev_data token loglarından (kümülatif; $ yok). Alanlar ADAY.'}
+            'note': 'From Continue dev_data token logs (cumulative; no $). Fields UNVERIFIED.'}
 
 
 def collect(days: int = 30) -> dict:

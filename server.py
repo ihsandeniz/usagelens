@@ -26,7 +26,7 @@ from urllib.parse import urlparse, parse_qs
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from usage import engine, settings, viewconfig   # noqa: E402
 
-VERSION = '0.6.1'                                  # tek kaynak: Server başlığı + panel rozeti
+VERSION = '0.6.2'                                  # tek kaynak: Server başlığı + panel rozeti
 HOST = '127.0.0.1'                                 # loopback-only (güvenlik — değiştirme)
 PORT = int(os.environ.get('USAGE_PORT', '8770'))   # port çakışmasında USAGE_PORT ile değiştir
 # Port doluyken çıkış kodu. 69 = sysexits.h EX_UNAVAILABLE ("hizmet erişilebilir değil").
@@ -293,6 +293,9 @@ class Handler(BaseHTTPRequestHandler):
 
         if path in ('/api/limit-kutu', '/api/limit-kutu/'):
             # Limit Kara Kutusu kartı: yan etkisiz, ağsız (seri + masaüstü geçmişi + transcript).
+            if os.environ.get('USAGE_DEMO') == '1':      # demo: makinedeki gerçek seri değil
+                from usage import demo
+                self._json(200, demo.kutu()); return
             from usage import limitseri
             self._json(200, limitseri.kutu_onbellekli()); return
 
@@ -422,7 +425,7 @@ class Handler(BaseHTTPRequestHandler):
 # CLI alt komutları (usage/cli.py). Tek giriş noktası bilinçli: donmuş paketin içinde
 # ikinci bir çalıştırılabilir yok — `usage-tracker.exe guard` çalışmak zorunda.
 CLI_COMMANDS = ('usage', 'providers', 'guard', 'watch', 'doctor', 'config', 'kanit',
-                'setup', 'panel')
+                'setup', 'panel', 'statusline')
 
 
 def main(argv=None):
@@ -460,17 +463,17 @@ def main(argv=None):
         return EXIT_USAGE
 
     if '--help' in argv or '-h' in argv:
-        print(f'usage-tracker {VERSION} — AI kullanım/limit/harcama izleyici\n'
+        print(f'usage-tracker {VERSION} — AI usage/limit/spend tracker\n'
               f'\n'
-              f'  python3 server.py            panel sunucusu (http://{HOST}:{PORT})\n'
-              f'  python3 server.py --no-open   tarayıcı açma (oturum açılışı için)\n'
-              f'  python3 server.py setup       kurulum sihirbazı (--ui ile tarayıcıda)\n'
-              f'  python3 server.py --version   sürüm\n'
+              f'  python3 server.py            panel server (http://{HOST}:{PORT})\n'
+              f'  python3 server.py --no-open   do not open a browser (for login autostart)\n'
+              f'  python3 server.py setup       setup wizard (--ui for the browser version)\n'
+              f'  python3 server.py --version   version\n'
               f'\n'
-              f'Ortam:\n'
-              f'  USAGE_PORT   port (varsayılan 8770)\n'
-              f'  USAGE_DEMO=1 sentetik demo verisi\n'
-              f'  USAGE_PRICES fiyat kataloğu dosyası (bkz. python3 -m usage.catalog)\n')
+              f'Environment:\n'
+              f'  USAGE_PORT   port (default 8770)\n'
+              f'  USAGE_DEMO=1 synthetic demo data\n'
+              f'  USAGE_PRICES price catalogue file (see python3 -m usage.catalog)\n')
         return 0
 
     try:

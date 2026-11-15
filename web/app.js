@@ -14,6 +14,12 @@ const I18N = {
     credit: 'Remaining credit', session: 'session', unreachable: 'unreachable',
     flagStale: '⚠ stale · last live read', flagAgo: 'ago', flagFailed: 'failed', flagLive: '🟢 live · real',
     flagLimited: '⏳ live limit (429) → fell back to estimate', flagEstimate: '≈ estimated',
+    errWord: 'error', expBadge: 'experimental',
+    expTip: 'No successful reply from this provider has been seen yet — field names are unverified. It shows no figure it does not recognise.',
+    hintSlMissing: 'Live limits need one setup step: run usage-tracker setup (or ./setup.sh) and accept “Show live limits”. They appear after your next Claude Code message.',
+    hintSlWaiting: 'Status line installed — live limits appear after your next message in Claude Code.',
+    hintNoClaude: 'Claude Code is not set up on this machine, so there are no live limits — spend still works.',
+    hintWait: 'Anthropic’s usage endpoint asked us to wait ~{m} min before asking again.',
     flagEstimateErr: '≈ estimated (live unavailable)', limSession: 'Session (5h)', limWeekly: 'Weekly (all)',
     limWeeklyModel: 'Weekly model', stOffline: 'off', scanPartial: 'Scan incomplete (truncated)',
     longtrail: 'Providers with no data: {n}',
@@ -35,7 +41,7 @@ const I18N = {
     cWeekPct: 'Weekly (all) %', cWeekReset: 'Weekly reset (day+hour)',
     cModelName: 'Model name', cModelPct: 'Model %', calibrateBtn: 'Calibrate',
     phPct62: 'e.g. 62', phPct40: 'e.g. 40', phPct55: 'e.g. 55',
-    pageTitle: 'usage-tracker · Claude usage & spending',
+    pageTitle: 'usagelens · Claude usage, limits & spend',
     provNote: 'An unconfigured provider opens no card. OpenRouter=real $ · Codex=subscription (API-equivalent $) · Ollama=local/free.',
     viewNote: 'Show the checked providers; unchecked ones are hidden from the panel/waybar/widget.',
     viewLocked: 'The Claude card cannot be hidden — the waybar badge, the tray and `guard` all read it.',
@@ -87,6 +93,12 @@ const I18N = {
     credit: 'Kalan kredi', session: 'oturum', unreachable: 'erişilemedi',
     flagStale: '⚠ bayat · son canlı okuma', flagAgo: 'önce', flagFailed: 'başarısız', flagLive: '🟢 canlı · gerçek',
     flagLimited: '⏳ canlı limit (429) → tahmine düşüldü', flagEstimate: '≈ tahmini',
+    errWord: 'hata', expBadge: 'deneysel',
+    expTip: 'Bu sağlayıcıdan henüz hiç başarılı yanıt görülmedi — alan adları doğrulanmadı. Tanımadığı rakamı göstermez.',
+    hintSlMissing: 'Canlı limit için tek bir kurulum adımı gerekiyor: usage-tracker setup (ya da ./setup.sh) çalıştır ve “Canlı limitleri göster”i onayla. Claude Code’daki bir sonraki mesajından sonra görünür.',
+    hintSlWaiting: 'Durum satırı kurulu — canlı limit, Claude Code’daki bir sonraki mesajından sonra görünür.',
+    hintNoClaude: 'Bu makinede Claude Code kurulu değil, o yüzden canlı limit yok — harcama yine çalışır.',
+    hintWait: 'Anthropic’in kullanım ucu tekrar sormadan önce ~{m} dk beklememizi istedi.',
     flagEstimateErr: '≈ tahmini (canlı: {e})', limSession: 'Oturum (5 sa)', limWeekly: 'Haftalık (tüm)',
     limWeeklyModel: 'Haftalık model', stOffline: 'kapalı', scanPartial: 'Tarama eksik (truncated)',
     longtrail: '{n} sağlayıcı veri döndürmedi',
@@ -108,7 +120,7 @@ const I18N = {
     cWeekPct: 'Haftalık (tüm) %', cWeekReset: 'Haftalık reset (gün+saat)',
     cModelName: 'Model adı', cModelPct: 'Model %', calibrateBtn: 'Kalibre et',
     phPct62: 'ör. 62', phPct40: 'ör. 40', phPct55: 'ör. 55',
-    pageTitle: 'usage-tracker · Claude kullanım & harcama',
+    pageTitle: 'usagelens · Claude kullanım, limit & harcama',
     provNote: 'Yapılandırılmamış sağlayıcı kart açmaz. OpenRouter=gerçek $ · Codex=abonelik (API-eşdeğeri $) · Ollama=yerel/ücretsiz.',
     viewNote: 'İşaretli sağlayıcıları göster; işaretsiz olanlar panel/waybar/widget\'tan gizlenir.',
     viewLocked: 'Claude kartı gizlenemez — waybar rozeti, tepsi ikonu ve `guard` bu kartı okuyor.',
@@ -323,11 +335,35 @@ function renderLimits(u) {
   if (modelSatiriVar(u.weeklyModel)) html += lbar(t('limWeeklyModel'), u.weeklyModel.name, u.weeklyModel, th);
   $('limit-bars').innerHTML = html;
 
+  // Canlı yüzde yoksa NEDEN yok ve ne yapılacak — tek cümle. Eskiden çubuklar `—` kalıyor,
+  // sebep yazmıyordu; 429'da da yalnız "~45 dk bekle" demek yanlış yol: çözüm kurulum adımı.
+  const hintEl = $('limit-hint');
+  if (hintEl) {
+    const hint = limitHint(u, Date.now());
+    hintEl.textContent = hint || '';
+    hintEl.hidden = !hint;
+  }
+
   // kaynak rozeti: canlı gerçek (Anthropic) > tahmini (kalibrasyon/ağırlık)
   const flag = $('calib-flag');
   const badge = liveFlag(u);
   flag.textContent = badge.text;
   flag.className = badge.cls;
+}
+
+// Saf fonksiyon (test edilebilir): sunucunun `live.hint.code`'undan seçili dilde cümle.
+function limitHint(u, nowMs) {
+  const lv = (u && u.live) || {};
+  const code = lv.hint && lv.hint.code;
+  if (!code) return '';
+  const base = { sl_missing: 'hintSlMissing', sl_waiting: 'hintSlWaiting', no_claude: 'hintNoClaude' }[code];
+  if (!base) return '';
+  let text = t(base);
+  if (lv.rateLimited && typeof lv.retryAtMs === 'number' && code !== 'no_claude') {
+    const m = Math.max(1, Math.round((lv.retryAtMs - nowMs) / 60000));
+    text += ' ' + t('hintWait').replace('{m}', String(m));
+  }
+  return text;
 }
 
 // Yaşı okunabilir yap — rozet "ne kadar eski" sorusunu cevaplamalı, yoksa uyarı değil süs.
@@ -394,7 +430,7 @@ function renderGlanceStrip(usage, providers) {
     // Kartı bir limit yayınlıyorsa manşet ODUR — bir duvara ne kadar yaklaştığın, o gün
     // ne kadar token harcadığından daha acil bir bilgidir. Claude satırıyla aynı kural.
     const hiLimit = highestLimit(c);
-    if (c.status === 'error') { val = 'hata'; vcls = 'crit'; dot = 'err'; }
+    if (c.status === 'error') { val = t('errWord'); vcls = 'crit'; dot = 'err'; }
     else if (hiLimit != null) { pct = hiLimit; dot = pctCls(pct); vcls = pctCls(pct); val = Math.round(pct) + '%'; }
     else if (c.kind === 'spend') {
       if (c.limit && c.limit.pct != null) { pct = c.limit.pct; dot = pctCls(pct); vcls = pctCls(pct); val = Math.round(pct) + '%'; }
@@ -640,7 +676,8 @@ function provShell(c, body) {
     : (c.tier || '');
   return `<div class="prov" id="prov-${esc(c.id)}">
     <div class="prov-head"><span class="pdot ${dot}"></span><span class="prov-name">${esc(c.name)}</span>
-      ${badge ? `<span class="prov-badge">${esc(badge)}</span>` : ''}</div>
+      ${badge ? `<span class="prov-badge">${esc(badge)}</span>` : ''}
+      ${c.experimental ? `<span class="prov-badge exp" title="${esc(t('expTip'))}">${esc(t('expBadge'))}</span>` : ''}</div>
     ${body}</div>`;
 }
 
@@ -663,7 +700,7 @@ async function submitCalib() {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
     if (r.ok) { msg.textContent = t('calibrated'); refresh(); }
-    else { msg.textContent = '✗ ' + (r.error || 'hata'); }
+    else { msg.textContent = '✗ ' + (r.error || t('errWord')); }
   } catch (e) { msg.textContent = '✗ ' + e.message; }
 }
 
@@ -1047,7 +1084,7 @@ async function submitViewConfig() {
       }, 2000);
       refresh();
     } else {
-      msg.textContent = '✗ ' + (r.error || 'hata');
+      msg.textContent = '✗ ' + (r.error || t('errWord'));
       msg.className = 'pill warn';
     }
   } catch (e) {
