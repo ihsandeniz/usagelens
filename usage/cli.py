@@ -903,7 +903,8 @@ def collect_doctor(args) -> dict:
     except Exception as exc:
         _check(checks, 'server', 'warn', 'Server', f'{target} unreachable ({type(exc).__name__})',
                ('Start it with `usage-tracker panel`' if os.name == 'nt' else
-                'Start it with `./start.sh` (or `./service.sh install` to autostart)')
+                'Start it with `usage-tracker panel` (from a clone: ./start.sh, '
+                'or ./service.sh install to autostart)')
                + ' — the CLI works without it, surfaces do not.')
 
     # 6. can we build the numbers here, and how long does it take

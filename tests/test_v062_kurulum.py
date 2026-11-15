@@ -180,3 +180,17 @@ class RenkYalnizTerminalde(unittest.TestCase):                                # 
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class SihirbazDogrulamasi(unittest.TestCase):
+    """Sihirbazın `verify` adımı doctor'u sahte bir argüman nesnesiyle çağırıyor; o nesnede
+    `timeout` yoktu → sunucu ayaktayken bile "unreachable (AttributeError)"."""
+
+    def test_verify_reports_a_real_reason(self):
+        from unittest import mock
+        from usage import wizard, cli
+        with mock.patch.object(cli, 'fetch_http', side_effect=ConnectionRefusedError()):
+            res = wizard._do_verify({})
+        text = ' '.join(res['messages'])
+        self.assertNotIn('AttributeError', text)
+        self.assertIn('ConnectionRefusedError', text)

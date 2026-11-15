@@ -338,8 +338,10 @@ usage-tracker setup --auto       # no questions; never writes a key
 usage-tracker setup --uninstall  # remove what the wizard wrote (keys and data stay)
 ```
 
-Four steps and a check: put the binary somewhere permanent, start it at logon, add a
-shortcut that opens the panel, optionally store provider keys, then run `doctor`.
+Five steps and a check: put the binary somewhere permanent, start it at logon, add a
+shortcut that opens the panel, add the Claude Code status line hook (live limits without
+the rate-limited endpoint — an existing status line is wrapped, not replaced), optionally
+store provider keys, then run `doctor`.
 
 Two rules make it safe to try:
 

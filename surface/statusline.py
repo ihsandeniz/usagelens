@@ -122,7 +122,8 @@ def line(windows: dict) -> str:
     for k, label in (('five_hour', m['five_hour']), ('seven_day', m['seven_day'])):
         w = windows.get(k)
         if w:
-            parts.append(f"{label} %{w['used_percentage']:.0f}")
+            pct = f"{w['used_percentage']:.0f}"
+            parts.append(f"{label} %{pct}" if m is METIN['tr'] else f"{label} {pct}%")
     return ' · '.join(parts)
 
 
@@ -228,7 +229,8 @@ def bant(tokens: int, pencere: int, gecmis: list[int]) -> str:
     _, ikon, sira, renk = next(k for k in KADEME if oran < k[0])
     kalan = max(0, hedef - tokens)
     parca = [f"\033[1;{renk}m{ikon} {m['kademe'][sira]}\033[0m",
-             f"%{round(100 * tokens / pencere)}",
+             (f"%{round(100 * tokens / pencere)}" if m is METIN['tr']
+              else f"{round(100 * tokens / pencere)}%"),
              f"\033[2m{kisa(tokens)}/{kisa(pencere)}\033[0m",
              f"{m['compact']} {kisa(kalan)}"]
     if len(gecmis) >= 3:

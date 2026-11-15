@@ -32,3 +32,34 @@ class EnglishModeHasNoTurkish(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class NoTurkishLiteralsInTheBackend(unittest.TestCase):
+    """Static half of the gate: provider notes only appear when that provider is installed
+    (LM Studio's card needs `lms` on PATH), so the runtime scan cannot see all of them.
+    Every human string in usage/ and server.py is English; Turkish lives in usage/i18n.py
+    (and the panel's own dictionary). Docstrings and comments are not strings shown to anyone."""
+
+    def test_no_turkish_string_constants(self):
+        import ast
+        import re
+        from pathlib import Path
+        root = Path(__file__).resolve().parent.parent
+        tr = re.compile('[çğıöşüÇĞİÖŞÜ]')
+        files = [root / 'server.py', *sorted((root / 'usage').glob('*.py')),
+                 *sorted((root / 'usage' / 'providers').glob('*.py'))]
+        hits = []
+        for f in files:
+            if f.name == 'i18n.py':
+                continue
+            tree = ast.parse(f.read_text(encoding='utf-8'))
+            docs = {id(n.body[0].value) for n in ast.walk(tree)
+                    if isinstance(n, (ast.Module, ast.ClassDef, ast.FunctionDef,
+                                      ast.AsyncFunctionDef))
+                    and n.body and isinstance(n.body[0], ast.Expr)
+                    and isinstance(n.body[0].value, ast.Constant)}
+            for n in ast.walk(tree):
+                if (isinstance(n, ast.Constant) and isinstance(n.value, str)
+                        and id(n) not in docs and tr.search(n.value)):
+                    hits.append(f'{f.relative_to(root)}:{n.lineno}: {n.value[:70]!r}')
+        self.assertEqual(hits, [], '\n'.join(hits))

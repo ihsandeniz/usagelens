@@ -222,6 +222,10 @@ class FirstOpenShowsLimit(_Sandbox):
                               timeout=30)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn('12', proc.stdout)
+        proc_en = subprocess.run([sys.executable, str(ROOT / 'server.py'), 'statusline'],
+                                 input=json.dumps(PAYLOAD), capture_output=True, text=True,
+                                 timeout=30, env=dict(os.environ, UT_LANG='en'))
+        self.assertIn('5h 12%', proc_en.stdout)              # İngilizce: sayı önce, % sonra
         self.assertTrue((self.home / '.state' / 'usage-tracker' /
                          'statusline-limits.json').exists())
 

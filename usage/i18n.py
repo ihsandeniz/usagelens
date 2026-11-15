@@ -71,9 +71,9 @@ MESSAGES = {
         'tr': 'Durduruldu.',
     },
     'setup_intro': {
-        'en': 'Four steps and a check. Each one shows what it will write before writing it, '
+        'en': 'Five steps and a check. Each one shows what it will write before writing it, '
               'and can be undone.',
-        'tr': 'Dört adım ve bir kontrol. Her adım yazacağını önce gösterir, sonra geri alınabilir.',
+        'tr': 'Beş adım ve bir kontrol. Her adım yazacağını önce gösterir, sonra geri alınabilir.',
     },
     'setup_apply': {
         'en': '  Apply this step?',

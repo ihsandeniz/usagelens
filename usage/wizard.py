@@ -673,6 +673,10 @@ class _DoctorArgs:
     probe = False
     url = None
     local = False
+    # `collect_doctor` sunucuyu `args.timeout` ile yokluyor; bu alan yoktu ve sihirbazın
+    # doğrulama adımı sunucu ayaktayken bile "unreachable (AttributeError)" diyordu
+    # (v0.6.2 konteyner ölçümü, 2026-11-15).
+    timeout = 3.0
 
 
 # ── adım tablosu ──────────────────────────────────────────────────────────────
