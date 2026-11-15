@@ -72,7 +72,7 @@ const STEP_TEXT = {
     statusline: ['Show live limits (Claude Code status line)',
                  'Claude Code already receives your limit % with every reply. This adds a ' +
                  'status line hook to its settings.json (backed up first) so the panel shows ' +
-                 'live limits with no extra request. Your own status line keeps showing.'],
+                 'live limits without a request of its own while you use Claude Code. Your own status line keeps showing.'],
     keys:      ['Provider API keys (optional)',
                 'Only needed for hosted providers like OpenRouter. Claude usage is read from ' +
                 'your own transcripts and needs no key.'],
@@ -90,7 +90,7 @@ const STEP_TEXT = {
     statusline: ['Canlı limitleri göster (Claude Code durum satırı)',
                  'Claude Code limit yüzdeni her cevapla zaten alıyor. Bu adım onun ' +
                  'settings.json dosyasına (önce yedekleyerek) bir durum satırı kancası ekler; ' +
-                 'panel canlı limiti ek istek atmadan gösterir. Kendi durum satırın görünmeye devam eder.'],
+                 'Claude Code\'u kullandıkça panel canlı limiti kendi isteği olmadan gösterir. Kendi durum satırın görünmeye devam eder.'],
     keys:      ['Sağlayıcı API anahtarları (isteğe bağlı)',
                 'Yalnız OpenRouter gibi dış sağlayıcılar için gerekir. Claude kullanımı senin ' +
                 'kendi kayıtlarından okunur, anahtar istemez.'],

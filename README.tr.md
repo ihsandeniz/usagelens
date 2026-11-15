@@ -6,11 +6,15 @@ duran dosyalardan.** Eski adı *usage-tracker*. Depo: `ihsandeniz/usage-tracker`
 ![rozet → panel → Limit Kara Kutusu (demo veri)](docs/demo.gif)
 
 ```bash
-pipx install git+https://github.com/ihsandeniz/usage-tracker.git && usagelens setup
+pipx install git+https://github.com/ihsandeniz/usage-tracker.git@v0.6.2 && usagelens setup
 ```
 
 Python 3.9+ gerekir (`python3 --version`); daha eski Python'da pipx anlaşılmaz bir
 "cannot determine package name" hatasıyla durur.
+
+Kaldırırken önce `usagelens setup --uninstall`, **sonra** `pipx uninstall usagelens` çalıştır —
+ilki Claude Code durum satırını eski hâline getirir. Sıra ters olursa Claude Code silinmiş bir
+programı çağırır (eski satırın `~/.claude/settings.json.bak-usage-tracker` içinde durur).
 
 `setup` her adımda neyi yazacağını yazmadan önce gösterir (her dosya önce yedeklenir;
 `usagelens setup --uninstall` geri alır). Sonra `usagelens panel` paneli
@@ -18,8 +22,12 @@ Python 3.9+ gerekir (`python3 --version`); daha eski Python'da pipx anlaşılmaz
 
 - **Canlı limit, Claude Code'un bir sonraki cevabından itibaren.** Bir kurulum adımı Claude
   Code'a durum satırı kancası ekler (seninki varsa görünmeye devam eder). Claude Code 5 saatlik
-  ve haftalık yüzdeni her cevapla zaten alıyor; kanca bunu kaydeder, Anthropic'in rate-limit'li
-  kullanım ucuna ek istek gitmez.
+  ve haftalık yüzdeni her cevapla zaten alıyor; kanca bunu kaydeder, Claude Code'u kullandığın
+  sürece hiç istek gitmez. Kayıtlı yüzde 10 dakikadan eskiyse (Claude Code boşta ya da kanca
+  kurulu değil) usagelens Anthropic'in kullanım ucuna kendisi sorar: Claude Code'un yerel giriş
+  jetonuyla `api.anthropic.com/api/oauth/usage` adresine tek GET, en sık 2 dakikada bir, 429'da
+  bekleyerek. Başka bir şey gönderilmez. Kapatma ayarı henüz yok; makinede Claude Code girişi
+  yoksa istek gitmez.
 - **Gerçek harcama.** Transcript'lerdeki token × gerçek model fiyatı: bugün, 30 gün, model başına.
 - **Nereden bakarsın:** web paneli, waybar rozeti `◐ S13% W18%`, floating widget, tepsi
   ikonu, telefon rozeti, komut satırı.
@@ -227,7 +235,7 @@ Güven önemli — her sayı kaynağıyla etiketli, sessizce hiçbir şey uyduru
 
 - **Token sayıları: %100 gerçek** — transcript'ten okunur, hesap değil.
 - **Fiyat: gerçek** — Opus/Sonnet/Haiku [models.dev](https://models.dev) kataloğundan (`source: catalog`); katalogda olmayan modeller resmi üretici fiyatından (`source: official`). Doğrulanmamış her şey `source: estimate` işaretlenir.
-- **Limitler: gerçek, kalibrasyonsuz** — kuruluysa Claude Code'un kendi durum satırından (ek istek yok), değilse `/usage`'ın kullandığı uçtan okunur.
+- **Limitler: gerçek, kalibrasyonsuz** — kuruluysa Claude Code'un kendi durum satırından (kayıt 10 dakikadan tazeyken istek yok), değilse ya da kayıt bayatsa `/usage`'ın kullandığı uçtan okunur.
 - **Abonelikteysen (Max, ChatGPT Plus…),** $ rakamı **API-eşdeğeri maliyettir** (bu kullanım pay-as-you-go olsa ne tutardı) = abonelikten çıkardığın değer. Gerçek faturan sabit ücrettir, bu rakam değil.
 - **1 saatlik önbellek yazımı ayrı fiyatlanır:** taban girdinin 2 katı, 5 dakikalık 1,25 katı. Çıktı jetonu yanıtın son satırından okunur. Haiku 5.5'in 100.000 üstü fiyatı istek başına uygulanır.
 - **Codex jetonlarında çözülmemiş küçük fark var:** yeni günlüklerdeki `token_usage_record` satırları okunmuyor; okunan `token_count` olaylarıyla bir ölçümde girdide %1,3, çıktıda %3,3 fark çıktı. Hangisinin tam doğru olduğu ölçülemedi.
@@ -242,7 +250,7 @@ geçmişi tutar — yalnız senin makinendeki dosyalardan.
 **Ne kaydeder.** Resmî limit yüzdesi her değiştiğinde
 `~/.local/state/usage-tracker/limit-seri.jsonl` dosyasına tek satır eklenir (yüzde + sıfırlanma
 anı; 2 MB tavan, en yeni satırlar kalır). Sayılar Claude Code durum satırı kancasından
-(`surface/statusline.py`) ve panelin kendi canlı okumasından gelir — ek istek yapılmaz.
+(`surface/statusline.py`) ve panelin kendi canlı okumasından gelir — kayıt yalnız bunları kaydeder, kendisi istek yapmaz.
 Claude masaüstü uygulaması kuruluysa onun kendi yüzde geçmişi
 (`~/.config/Claude/plan-usage-history.json`, Windows'ta `%APPDATA%\Claude\…`) **okunur; asla
 kopyalanmaz ya da yazılmaz**: yalnız zaman ve iki yüzde alınır, hesap kimliği ayrıştırırken
@@ -406,3 +414,6 @@ kalır: rastgele port + tek kullanımlık jeton + kendini kapatma. Kalıcı pane
 ## Lisans
 
 [MIT](LICENSE) © 2026 İhsan Deniz
+
+Gömülü fiyat anlık görüntüsü [models.dev](https://models.dev)'den alınır (MIT, © 2025 models.dev) —
+bkz. [data/MODELS_DEV_LICENSE](data/MODELS_DEV_LICENSE).

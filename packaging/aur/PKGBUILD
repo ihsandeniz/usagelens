@@ -5,7 +5,7 @@
 # (pkgname, install dir, the command in /usr/bin). Decided 2026-11-15: `usagelens`; the
 # repository stays ihsandeniz/usage-tracker and `usage-tracker` stays as a second command.
 #
-# Before publishing (the account owner does these — see reports/2026-11-15-usage-tracker-v062):
+# Before publishing (the account owner does these):
 #   1. tag v$pkgver on GitHub (VERSION lives in server.py; CI checks the tag against it)
 #   2. `updpkgsums` — replaces SKIP with the GitHub tarball's real sha256
 #   3. `makepkg --printsrcinfo > .SRCINFO`, `namcap PKGBUILD *.pkg.tar.zst`

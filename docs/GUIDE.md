@@ -261,7 +261,7 @@ Trust matters, so every number is labelled by source — nothing is silently mad
 - **Prices work offline, out of the box** — a models.dev snapshot ships inside the repo, so a fresh clone prices your usage on the first run with no network and no other tool installed. Refresh it whenever you like: `python3 -m usage.catalog --update`. Run `python3 -m usage.catalog` to see which source is in use and how old it is.
 - **A model nobody has priced is not counted as $0.** Its tokens are reported separately in `unknownPriceModels` and left out of the totals, so a total that is incomplete says so instead of quietly looking finished.
 - **A scan that stopped early says so** — the local-log adapters cap how much they read; when they hit that cap the card reads `partial` and explains itself, rather than presenting a truncated number as your usage.
-- **Limits: real, no calibration** — read from Claude Code's own status line when it is installed (no extra request), otherwise from the same endpoint Claude Code's `/usage` uses.
+- **Limits: real, no calibration** — read from Claude Code's own status line when it is installed (no request while that record is under 10 minutes old), otherwise — or when it is stale — from the same endpoint Claude Code's `/usage` uses.
 - **If you're on a subscription (Max, ChatGPT Plus…),** the $ figure is the **API-equivalent cost** (what this usage would cost pay-as-you-go) = the value you're getting from the subscription. Your actual bill is the flat fee, not this number.
 - **Not priced separately:** Opus fast mode (logs now carry `usage.speed`, the premium is not applied) and 1M-context premium pricing, which doesn't appear in the transcript's model field, are computed at standard rates (real cost may be slightly higher).
 
@@ -274,7 +274,7 @@ that, from files on your machine only.
 **What it records.** Every time the official limit percentage changes, one line is appended
 to `~/.local/state/usage-tracker/limit-seri.jsonl` (percentage + reset time; capped at 2 MB,
 newest lines kept). The numbers come from the Claude Code status line hook
-(`surface/statusline.py`) and from the panel's own live read — no extra request is made. If
+(`surface/statusline.py`) and from the panel's own live read — recording them makes no request of its own. If
 the Claude desktop app is installed, its own percentage history
 (`~/.config/Claude/plan-usage-history.json`, `%APPDATA%\Claude\…` on Windows) is **read, never
 copied or written**: only the time and the two percentages are taken, the account id is

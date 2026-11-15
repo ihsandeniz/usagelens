@@ -1117,7 +1117,7 @@ fi
 # ── 5) Claude Code status line ──────────────────────────────────────────────
 step "5/7  Live limits (Claude Code status line)"
 echo "   Claude Code already gets your limit % with every reply. A status line hook"
-echo "   saves it, so the panel shows live limits with no extra request."
+echo "   saves it, so while you use Claude Code the panel needs no request of its own."
 SL_PREVIEW="$(claude_sl preview 2>/dev/null)"
 case "$(sl_field "$SL_PREVIEW" state)" in
   present) ok "already installed" ; DID_SL=present ;;
