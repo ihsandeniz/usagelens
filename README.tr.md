@@ -6,7 +6,7 @@ duran dosyalardan.** Eski adı *usage-tracker* — eski GitHub adresi buraya yö
 ![rozet → panel → Limit Kara Kutusu (demo veri)](docs/demo.gif)
 
 ```bash
-pipx install git+https://github.com/ihsandeniz/usagelens.git && usagelens setup
+pipx install git+https://github.com/ihsandeniz/usagelens.git@v0.6.2 && usagelens setup
 ```
 
 Python 3.9+ gerekir (`python3 --version`); daha eski Python'da pipx anlaşılmaz bir
