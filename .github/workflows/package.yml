@@ -230,11 +230,12 @@ jobs:
           if ($null -eq $panel -or $panel.StatusCode -ne 200) { throw 'the panel never took over after the wizard' }
           Write-Host 'panel took over after Finish'
 
-          # Pencere kullanıcıya iki dilde ne olduğunu söylüyor mu.
-          $text = Get-Content $log -Raw
+          # Pencere ne olduğunu söylüyor mu. 0.6.2'den beri tek dil: varsayılan İngilizce,
+          # Türkçe yalnız UT_LANG=tr / Türkçe arayüz dilinde (eskiden iki dil birden basılıyordu).
+          $text = Get-Content $log -Raw -Encoding utf8
           if ($text -notmatch 'The panel is running') { throw 'the window never said what happened (en)' }
-          if ($text -notmatch 'Panel çalışıyor')      { throw 'the window never said what happened (tr)' }
-          Write-Host 'the window explained itself in both languages'
+          if ($text -match 'Panel çalışıyor')         { throw 'Turkish leaked into the English window' }
+          Write-Host 'the window explained itself (English, one language)'
           exit 0
 
       - name: Where does it write on Windows
