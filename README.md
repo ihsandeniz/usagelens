@@ -23,7 +23,7 @@ stdlib Python — nothing to compile.
   When the saved % is older than 10 minutes (Claude Code idle, or the hook not installed),
   usagelens asks Anthropic's usage endpoint itself: one GET to
   `api.anthropic.com/api/oauth/usage` with your local Claude Code login token, at most every
-  2 minutes, waiting out any 429. Nothing else is sent. There is no off switch yet; without a
+  2 minutes, waiting out any 429. The request identifies itself as Claude Code (`User-Agent: claude-cli/2.1.197 (external, cli)`, `anthropic-beta: oauth-2025-04-20`), not as usagelens. Nothing else is sent. There is no off switch yet; without a
   Claude Code login on the machine no request is made.
 - **Real spend.** Token counts from your transcripts × real model prices: today, 30 days,
   per model. On a subscription that is the API-equivalent value, not your bill.

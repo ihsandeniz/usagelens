@@ -26,7 +26,7 @@ programı çağırır (eski satırın `~/.claude/settings.json.bak-usage-tracker
   sürece hiç istek gitmez. Kayıtlı yüzde 10 dakikadan eskiyse (Claude Code boşta ya da kanca
   kurulu değil) usagelens Anthropic'in kullanım ucuna kendisi sorar: Claude Code'un yerel giriş
   jetonuyla `api.anthropic.com/api/oauth/usage` adresine tek GET, en sık 2 dakikada bir, 429'da
-  bekleyerek. Başka bir şey gönderilmez. Kapatma ayarı henüz yok; makinede Claude Code girişi
+  bekleyerek. İstek kendini usagelens olarak değil Claude Code olarak tanıtır (`User-Agent: claude-cli/2.1.197 (external, cli)`, `anthropic-beta: oauth-2025-04-20`). Başka bir şey gönderilmez. Kapatma ayarı henüz yok; makinede Claude Code girişi
   yoksa istek gitmez.
 - **Gerçek harcama.** Transcript'lerdeki token × gerçek model fiyatı: bugün, 30 gün, model başına.
 - **Nereden bakarsın:** web paneli, waybar rozeti `◐ S13% W18%`, floating widget, tepsi

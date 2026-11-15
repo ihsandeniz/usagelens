@@ -42,6 +42,8 @@ class YanlisIddiaGeriGelmez(unittest.TestCase):
             self.assertIn('api.anthropic.com/api/oauth/usage', metin)
             self.assertIn(on_dk, metin)
             self.assertIn(iki_dk, metin)
+            self.assertIn(f'User-Agent: {live.UA}', metin)   # istemci kimliği açıkça yazılı
+            self.assertIn(f'anthropic-beta: {live.BETA}', metin)
 
 
 class KurulumEkranlariAyristirilir(unittest.TestCase):
