@@ -27,6 +27,7 @@ import sys
 import tempfile
 import time
 import unittest
+import unittest.mock
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -187,6 +188,11 @@ class TrayCase(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix='ut-tray-'))
         self.addCleanup(shutil.rmtree, self.tmp, True)
+        # Menü metni dile bağlı: testi makinenin yerel ayarından bağımsız tut. Bu sınıf
+        # Türkçe menüyü sınar; İngilizce menü ayrı testte (EnglishMenu).
+        self._lang = unittest.mock.patch.dict(os.environ, {'UT_LANG': getattr(self, 'LANG', 'tr')})
+        self._lang.start()
+        self.addCleanup(self._lang.stop)
         self.tray = load_tray()
         self.tray.SELF_DIR = self.tmp
         self.tray.LOG_PATH = self.tmp / 'state' / 'tray.log'
@@ -393,6 +399,21 @@ class TheLogLandsWhereTheDesktopSaysItShould(unittest.TestCase):
         self.assertEqual(tray.LOG_PATH,
                          Path.home() / '.local' / 'state' / 'usage-tracker' / 'tray.log')
 
+
+
+class EnglishMenu(TrayCase):
+    """Aynı menü öğesi İngilizce ekranda (varsayılan dil) da çalışır."""
+    LANG = 'en'
+
+    def _tepsi(self):
+        return self.tray.Tray(_Noop())
+
+    def test_toggle_widget_warns_in_english_too(self):
+        self.widget_yaz('import sys\nsys.stderr.write("no compositor\\n")\nsys.exit(2)\n')
+        tepsi = self._tepsi()
+        tepsi.icon.menu.tikla('Toggle widget')
+        self.assertEqual(len(tepsi.icon.balloons), 1, 'English menu entry did nothing')
+        self.assertIn('no compositor', tepsi.icon.balloons[0][1])
 
 if __name__ == '__main__':
     unittest.main()

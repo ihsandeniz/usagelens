@@ -24,6 +24,7 @@ from unittest import mock
 
 from usage import claude_statusline as cs
 from usage import wizard
+from usage import platform as _paths
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PAYLOAD = {'rate_limits': {'five_hour': {'used_percentage': 12, 'resets_at': 4102444800},
@@ -139,7 +140,7 @@ class DoBacksUpAndWraps(_Sandbox):                                           # S
         proc = self.run_hook(PAYLOAD)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual(proc.stdout.strip(), 'MY-OWN-LINE')
-        rec = json.loads((self.home / '.state' / 'usage-tracker' /
+        rec = json.loads((_paths.state_dir() /
                           'statusline-limits.json').read_text(encoding='utf-8'))
         self.assertEqual(rec['windows']['five_hour']['used_percentage'], 12.0)
 
@@ -174,7 +175,7 @@ class UndoRestores(_Sandbox):                                                # S
         data = json.loads(self.settings.read_text(encoding='utf-8'))
         # hâlâ bizimki gibi görünüyor (aynı betik) ama yorumlayıcı değişmiş: kayıtla uyuşmaz
         data['statusLine']['command'] = data['statusLine']['command'].replace(
-            json.dumps(sys.executable), '"/opt/other/python3"', 1)
+            cs._quote(sys.executable), '"/opt/other/python3"', 1)
         self.assertNotEqual(data['statusLine']['command'], cs.hook_command())
         self.assertTrue(cs._OURS_RE.search(data['statusLine']['command']))
         self.settings.write_text(json.dumps(data), encoding='utf-8')
@@ -226,8 +227,7 @@ class FirstOpenShowsLimit(_Sandbox):
                                  input=json.dumps(PAYLOAD), capture_output=True, text=True,
                                  timeout=30, env=dict(os.environ, UT_LANG='en'))
         self.assertIn('5h 12%', proc_en.stdout)              # İngilizce: sayı önce, % sonra
-        self.assertTrue((self.home / '.state' / 'usage-tracker' /
-                         'statusline-limits.json').exists())
+        self.assertTrue((_paths.state_dir() / 'statusline-limits.json').exists())
 
 
 class WizardWiring(_Sandbox):

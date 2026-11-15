@@ -399,7 +399,7 @@ class StalenessReachesEverySurface(unittest.TestCase):
         }
 
     # ── waybar: the real jq program, served over real HTTP ────────────────────
-    def _run_waybar(self, wire):
+    def _run_waybar(self, wire, lang='tr'):
         # waybar is a Linux/Wayland module and this feeder is its Linux path — the Windows
         # path is `usage --format waybar`, which has no shell in it and is tested above.
         # Running the bash feeder under Git Bash measures Git Bash: it exits 1 with an empty
@@ -425,7 +425,8 @@ class StalenessReachesEverySurface(unittest.TestCase):
         httpd = HTTPServer(('127.0.0.1', 0), H)
         threading.Thread(target=httpd.serve_forever, daemon=True).start()
         try:
-            env = dict(os.environ, USAGE_URL=f'http://127.0.0.1:{httpd.server_address[1]}')
+            env = dict(os.environ, USAGE_URL=f'http://127.0.0.1:{httpd.server_address[1]}',
+                       UT_LANG=lang)   # dil testin kendisinde sabit, yerel ayardan bağımsız
             out = subprocess.run(['bash', str(self.REPO / 'surface' / 'waybar-usage.sh')],
                                  capture_output=True, text=True, encoding='utf-8',
                                  errors='replace', timeout=30, env=env)
@@ -444,6 +445,13 @@ class StalenessReachesEverySurface(unittest.TestCase):
         badge = self._run_waybar(self._wire(stale=False, age=12.0))
         self.assertNotIn('bayat', badge['tooltip'])
 
+    def test_the_waybar_tooltip_says_the_number_is_old_in_english(self):
+        badge = self._run_waybar(self._wire(stale=True), lang='en')
+        self.assertIn('stale', badge['tooltip'])
+        self.assertNotIn('bayat', badge['tooltip'])
+        fresh = self._run_waybar(self._wire(stale=False, age=12.0), lang='en')
+        self.assertNotIn('stale', fresh['tooltip'])
+
     # ── tray: the real summariser ─────────────────────────────────────────────
     def _tray(self):
         import importlib.util
@@ -458,10 +466,17 @@ class StalenessReachesEverySurface(unittest.TestCase):
 
     def test_the_tray_tooltip_says_the_number_is_old(self):
         tray = self._tray()
-        _cls, _pct, tooltip, _headline = tray._summarize(self._wire(stale=True))
-        self.assertIn('bayat', tooltip)
-        _cls, _pct, fresh, _headline = tray._summarize(self._wire(stale=False, age=12.0))
-        self.assertNotIn('bayat', fresh)
+        from unittest import mock
+        with mock.patch.dict(os.environ, {'UT_LANG': 'tr'}):
+            _cls, _pct, tooltip, _headline = tray._summarize(self._wire(stale=True))
+            self.assertIn('bayat', tooltip)
+            _cls, _pct, fresh, _headline = tray._summarize(self._wire(stale=False, age=12.0))
+            self.assertNotIn('bayat', fresh)
+        with mock.patch.dict(os.environ, {'UT_LANG': 'en'}):
+            _cls, _pct, tooltip, _headline = tray._summarize(self._wire(stale=True))
+            self.assertIn('stale', tooltip)
+            _cls, _pct, fresh, _headline = tray._summarize(self._wire(stale=False, age=12.0))
+            self.assertNotIn('stale', fresh)
 
     def test_an_empty_grid_has_a_way_out(self):
         """Ölçüldü (2026-08-13, headless): bozuk `ut.panel.search.v1` ızgarayı boşaltıyor.

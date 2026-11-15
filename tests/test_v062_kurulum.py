@@ -124,7 +124,8 @@ class PanelIpucu(unittest.TestCase):                                          # 
         js = (i18n.replace('const I18N', 'var I18N') + f"\nvar LANG='{lang}';"
               "\nvar t=(k)=>I18N[LANG]?.[k]??I18N.en?.[k]??k;\n" + fn
               + f"\nconsole.log(JSON.stringify(limitHint({{live:{json.dumps(live)}}}, {now})));")
-        out = subprocess.run(['node', '-e', js], capture_output=True, text=True, timeout=30)
+        out = subprocess.run(['node', '-e', js], capture_output=True, text=True, timeout=30,
+                             encoding='utf-8', errors='replace')   # Windows: cp1252 değil
         self.assertEqual(out.returncode, 0, out.stderr)
         return json.loads(out.stdout)
 
