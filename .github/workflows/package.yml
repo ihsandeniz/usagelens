@@ -146,7 +146,7 @@ jobs:
           $probe = & dist\usage-tracker.exe setup --probe | Out-String | ConvertFrom-Json
           Write-Host "platform=$($probe.platform) frozen=$($probe.frozen) steps=$($probe.steps.Count)"
           if ($probe.platform -ne 'windows') { throw "the wizard thinks it is on $($probe.platform)" }
-          if ($probe.steps.Count -ne 5)      { throw "expected 5 steps, got $($probe.steps.Count)" }
+          if ($probe.steps.Count -ne 6)      { throw "expected 6 steps (0.6.2 added statusline), got $($probe.steps.Count)" }
 
           $startup = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\usage-tracker.vbs"
           $menu    = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\usage-tracker.cmd"
@@ -355,8 +355,8 @@ jobs:
                 f"steps={[s['id'] for s in probe['steps']]}")
           if not probe['frozen']:
               sys.exit('the wizard does not know it is packaged')
-          if len(probe['steps']) != 5:
-              sys.exit(f"expected 5 steps, got {len(probe['steps'])}")
+          if len(probe['steps']) != 6:     # 0.6.2: install autostart shortcut statusline keys verify
+              sys.exit(f"expected 6 steps, got {len(probe['steps'])}")
           PY
           ./dist/usage-tracker setup --do shortcut > /dev/null
           test -f "$HOME/.local/share/applications/usage-tracker.desktop" \
