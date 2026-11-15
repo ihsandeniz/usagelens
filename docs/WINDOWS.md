@@ -11,7 +11,7 @@ asks you the rest.
 
 ### 1. Download the file
 
-Go to the [latest release](https://github.com/ihsandeniz/usage-tracker/releases/latest) and
+Go to the [latest release](https://github.com/ihsandeniz/usagelens/releases/latest) and
 click **`usage-tracker-<version>-windows-x64.exe`**. One file, about 10 MB. There is no
 separate installer and no runtime to install first: the wizard, the panel and the command
 line all live inside that one file.
@@ -189,8 +189,8 @@ Full reference: [`CLI.md`](CLI.md).
 If you would rather not run an unsigned `.exe`:
 
 ```powershell
-git clone https://github.com/ihsandeniz/usage-tracker.git
-cd usage-tracker
+git clone https://github.com/ihsandeniz/usagelens.git
+cd usagelens
 python server.py
 ```
 
@@ -223,5 +223,5 @@ GitHub's `windows-latest` machines. The honest split:
 - cold start time
 - where Claude Code keeps its data on your particular Windows install
 
-If you try any of these, [open an issue](https://github.com/ihsandeniz/usage-tracker/issues).
+If you try any of these, [open an issue](https://github.com/ihsandeniz/usagelens/issues).
 That list is the missing half of this page.

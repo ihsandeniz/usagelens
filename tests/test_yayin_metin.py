@@ -88,7 +88,7 @@ class YayinNotlari(unittest.TestCase):
             satirlar = [s for s in oku(rel).splitlines() if s.startswith('pipx install git+')]
             self.assertTrue(satirlar, rel)
             for s in satirlar:
-                self.assertIn(f'usage-tracker.git@v{server.VERSION} ', s, rel)
+                self.assertIn(f'github.com/ihsandeniz/usagelens.git@v{server.VERSION} ', s, rel)
 
     def test_deneysel_listesi_belgeyle_ayni(self):
         from usage.providers import EXPERIMENTAL

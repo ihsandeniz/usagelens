@@ -326,7 +326,7 @@ def _systemd_unit_body() -> str:
     return (f'# {STAMP}\n'
             '[Unit]\n'
             'Description=usage-tracker — AI usage/limit/spend server (loopback :8770)\n'
-            'Documentation=https://github.com/ihsandeniz/usage-tracker\n'
+            'Documentation=https://github.com/ihsandeniz/usagelens\n'
             'After=default.target\n\n'
             '[Service]\n'
             'Type=simple\n'

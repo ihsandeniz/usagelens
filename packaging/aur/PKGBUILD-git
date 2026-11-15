@@ -11,7 +11,7 @@ pkgver=0.6.2.r0.g0000000
 pkgrel=1
 pkgdesc='Claude / AI usage, limits and real spend on your desktop — panel, waybar badge, CLI (stdlib only)'
 arch=('any')
-url='https://github.com/ihsandeniz/usage-tracker'
+url='https://github.com/ihsandeniz/usagelens'
 license=('MIT')
 depends=('python>=3.9')
 optdepends=(
@@ -24,7 +24,7 @@ optdepends=(
 makedepends=('git')
 provides=("$_name" 'usage-tracker')
 conflicts=("$_name" 'usage-tracker')
-_src="${_src:-git+https://github.com/ihsandeniz/usage-tracker.git}"
+_src="${_src:-git+https://github.com/ihsandeniz/usagelens.git}"
 source=("usage-tracker::$_src")
 sha256sums=('SKIP')
 _srcdir="usage-tracker"

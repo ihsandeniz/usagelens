@@ -1,12 +1,12 @@
 # usagelens
 
 **Your Claude Code limits, spend and "what ate my limit" — on your own desktop, from files
-already on your disk.** Formerly *usage-tracker*. Repository: `ihsandeniz/usage-tracker`.
+already on your disk.** Formerly *usage-tracker* — the old GitHub address redirects here.
 
 ![badge → panel → Limit Black Box (demo data)](docs/demo.gif)
 
 ```bash
-pipx install git+https://github.com/ihsandeniz/usage-tracker.git@v0.6.2 && usagelens setup
+pipx install git+https://github.com/ihsandeniz/usagelens.git@v0.6.2 && usagelens setup
 ```
 
 Needs Python 3.9+ (`python3 --version`); on older Pythons pipx stops with an unclear
@@ -43,9 +43,9 @@ with anonymous evidence (`usagelens kanit`) you can paste into a bug report.
 
 | | |
 |---|---|
-| From a clone (Linux) | `git clone https://github.com/ihsandeniz/usage-tracker && cd usage-tracker && ./setup.sh` — adds waybar, widget and tray steps; `./setup.sh --ui` for a browser window |
+| From a clone (Linux) | `git clone https://github.com/ihsandeniz/usagelens && cd usagelens && ./setup.sh` — adds waybar, widget and tray steps; `./setup.sh --ui` for a browser window |
 | Arch (AUR) | package `usagelens` — **not uploaded yet** |
-| Windows | download the `.exe` from [Releases](https://github.com/ihsandeniz/usage-tracker/releases/latest) and double-click it → [docs/WINDOWS.md](docs/WINDOWS.md) |
+| Windows | download the `.exe` from [Releases](https://github.com/ihsandeniz/usagelens/releases/latest) and double-click it → [docs/WINDOWS.md](docs/WINDOWS.md) |
 
 `usage-tracker` still works as a command name.
 

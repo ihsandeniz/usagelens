@@ -11,7 +11,7 @@ program soruyor.
 
 ### 1. Dosyayı indir
 
-[Releases sayfasına](https://github.com/ihsandeniz/usage-tracker/releases/latest) git ve
+[Releases sayfasına](https://github.com/ihsandeniz/usagelens/releases/latest) git ve
 **`usage-tracker-<sürüm>-windows-x64.exe`** dosyasına tıkla. Tek dosya, yaklaşık 10 MB.
 Kurulum sihirbazı, tepsi ikonu, ek program — hiçbiri ayrı indirilmiyor; hepsi bu dosyanın
 içinde.
@@ -167,8 +167,8 @@ Kayıt defterine (registry) hiçbir şey yazılmaz — API anahtarı eklediysen 
 İmzasız bir `.exe` çalıştırmak istemiyorsan:
 
 ```powershell
-git clone https://github.com/ihsandeniz/usage-tracker.git
-cd usage-tracker
+git clone https://github.com/ihsandeniz/usagelens.git
+cd usagelens
 python server.py
 ```
 
@@ -201,5 +201,5 @@ Bu projenin geliştirme makinesi Linux; Windows tarafı çoğunlukla otomatik te
 - Soğuk açılış süresi
 - Claude Code'un senin Windows kurulumunda verisini nereye yazdığı
 
-Bu maddelerden birini denersen, [bir issue aç](https://github.com/ihsandeniz/usage-tracker/issues)
+Bu maddelerden birini denersen, [bir issue aç](https://github.com/ihsandeniz/usagelens/issues)
 — bu sayfanın eksik yarısı tam olarak orası.

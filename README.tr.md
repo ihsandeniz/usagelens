@@ -1,12 +1,12 @@
 # usagelens
 
 **Claude Code limitin, harcaman ve "limitimi ne yedi" — kendi masaüstünde, zaten diskinde
-duran dosyalardan.** Eski adı *usage-tracker*. Depo: `ihsandeniz/usage-tracker`.
+duran dosyalardan.** Eski adı *usage-tracker* — eski GitHub adresi buraya yönlendirir.
 
 ![rozet → panel → Limit Kara Kutusu (demo veri)](docs/demo.gif)
 
 ```bash
-pipx install git+https://github.com/ihsandeniz/usage-tracker.git@v0.6.2 && usagelens setup
+pipx install git+https://github.com/ihsandeniz/usagelens.git@v0.6.2 && usagelens setup
 ```
 
 Python 3.9+ gerekir (`python3 --version`); daha eski Python'da pipx anlaşılmaz bir
@@ -47,8 +47,8 @@ kanıtla (`usagelens kanit`).
 ## Kurulum
 
 ```bash
-git clone https://github.com/ihsandeniz/usage-tracker.git
-cd usage-tracker
+git clone https://github.com/ihsandeniz/usagelens.git
+cd usagelens
 ./setup.sh            # ★ sihirbaz: bağımlılık → sunucu → waybar → widget/tray → canlı limit → key → doğrulama
 ```
 
@@ -59,7 +59,7 @@ penceresinde açar — her adım ne yazacağının **gerçek diff'ini** gösteri
 ![kurulum sihirbazı, waybar config'ine yazacağı diff'i gösteriyor](docs/setup-wizard.png)
 
 **Windows'ta mısın?**
-[Releases](https://github.com/ihsandeniz/usage-tracker/releases/latest)'tan `.exe`'yi indir ve
+[Releases](https://github.com/ihsandeniz/usagelens/releases/latest)'tan `.exe`'yi indir ve
 **çift tıkla** — kurulum sihirbazı tarayıcında kendiliğinden açılır, Türkçe/İngilizce. Komut
 yazmak yok, ayrı kurulum dosyası yok. Adım adım (SmartScreen uyarısı dâhil):
 [`docs/WINDOWS.tr.md`](docs/WINDOWS.tr.md) · [English](docs/WINDOWS.md)

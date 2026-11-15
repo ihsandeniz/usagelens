@@ -15,8 +15,8 @@ If you use Claude Code, Codex, OpenRouter, Ollama etc., your spend and rate-limi
 ## Install
 
 ```bash
-git clone https://github.com/ihsandeniz/usage-tracker.git
-cd usage-tracker
+git clone https://github.com/ihsandeniz/usagelens.git
+cd usagelens
 ./setup.sh            # ★ guided wizard: deps → server → waybar → widget/tray → live limits → keys → verify
 ```
 
@@ -24,7 +24,7 @@ Rather click than type? `./setup.sh --ui` runs the same seven steps in a browser
 each one showing a real diff of what it is about to write, with an Undo button next to it.
 
 **On Windows?** Download the `.exe` from
-[Releases](https://github.com/ihsandeniz/usage-tracker/releases/latest) and **double-click
+[Releases](https://github.com/ihsandeniz/usagelens/releases/latest) and **double-click
 it** — the setup wizard opens in your browser by itself, in English or Turkish. No commands,
 no separate installer. Step by step, including what SmartScreen will say:
 [`docs/WINDOWS.md`](WINDOWS.md) · [Türkçe](WINDOWS.tr.md)

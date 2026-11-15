@@ -1,6 +1,6 @@
 # Release checklist
 
-The repo is already public: **github.com/ihsandeniz/usage-tracker**.
+The repo is already public: **github.com/ihsandeniz/usagelens**.
 
 > **Layout note (2026-08-11).** This directory *is* the public repo — there is no second copy
 > and no `rsync` step any more. `git remote -v` here points at `origin`, and the surrounding

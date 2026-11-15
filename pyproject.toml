@@ -1,5 +1,5 @@
 # Distribution name `usagelens` (2026-11-15): `usage-tracker` belongs to someone else on PyPI.
-# The repository stays ihsandeniz/usage-tracker, the import package stays `usage` and the
+# The repository is ihsandeniz/usagelens (renamed 2026-11-15; the old URL redirects), the import package stays `usage` and the
 # `usage-tracker` command stays — `usagelens` is an extra command name, nothing is renamed
 # under an existing install. Not uploaded to PyPI yet (the account owner decides).
 #
@@ -37,9 +37,9 @@ dependencies = []    # stdlib only — a promise, see README "Development"
 tray = ["PyQt5"]     # surface/usage-tray.py; the panel and CLI never need it
 
 [project.urls]
-Homepage = "https://github.com/ihsandeniz/usage-tracker"
-Issues = "https://github.com/ihsandeniz/usage-tracker/issues"
-Repository = "https://github.com/ihsandeniz/usage-tracker"
+Homepage = "https://github.com/ihsandeniz/usagelens"
+Issues = "https://github.com/ihsandeniz/usagelens/issues"
+Repository = "https://github.com/ihsandeniz/usagelens"
 
 [project.scripts]
 usagelens = "server:main"

@@ -3,7 +3,7 @@
 #
 # The package name lives in ONE place: `_name` below. Change it there and everything follows
 # (pkgname, install dir, the command in /usr/bin). Decided 2026-11-15: `usagelens`; the
-# repository stays ihsandeniz/usage-tracker and `usage-tracker` stays as a second command.
+# the repository was renamed to ihsandeniz/usagelens and `usage-tracker` stays as a second command.
 #
 # Before publishing (the account owner does these):
 #   1. tag v$pkgver on GitHub (VERSION lives in server.py; CI checks the tag against it)
@@ -22,7 +22,7 @@ pkgver=0.6.2
 pkgrel=1
 pkgdesc='Claude / AI usage, limits and real spend on your desktop — panel, waybar badge, CLI (stdlib only)'
 arch=('any')
-url='https://github.com/ihsandeniz/usage-tracker'
+url='https://github.com/ihsandeniz/usagelens'
 license=('MIT')
 depends=('python>=3.9')
 optdepends=(
@@ -36,7 +36,7 @@ provides=('usage-tracker')
 conflicts=('usage-tracker' "$_name-git")
 source=("$_name-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('SKIP')
-_srcdir="usage-tracker-$pkgver"     # GitHub names the tarball's top dir after the REPO
+_srcdir="usagelens-$pkgver"     # GitHub names the tarball's top dir after the REPO
 
 package() {
   cd "$srcdir/$_srcdir"

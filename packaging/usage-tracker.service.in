@@ -1,6 +1,6 @@
 [Unit]
 Description=usage-tracker — AI usage/limit/spend server (loopback :8770)
-Documentation=https://github.com/ihsandeniz/usage-tracker
+Documentation=https://github.com/ihsandeniz/usagelens
 After=default.target
 
 [Service]
