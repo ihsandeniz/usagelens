@@ -88,7 +88,12 @@ class YayinNotlari(unittest.TestCase):
             satirlar = [s for s in oku(rel).splitlines() if s.startswith('pipx install git+')]
             self.assertTrue(satirlar, rel)
             for s in satirlar:
-                self.assertIn(f'github.com/ihsandeniz/usagelens.git@v{server.VERSION} ', s, rel)
+                # Etiket atılmadan main'deki satır sürümsüz kalır (yoksa 'ref yok' hatası);
+                # sürüme sabitlenmişse yalnız bu sürüme sabitlenebilir.
+                self.assertRegex(s, r'github\.com/ihsandeniz/usagelens\.git(@v[0-9.]+)? ', rel)
+                m = re.search(r'usagelens\.git@v([0-9.]+) ', s)
+                if m:
+                    self.assertEqual(m.group(1), server.VERSION, rel)
 
     def test_deneysel_listesi_belgeyle_ayni(self):
         from usage.providers import EXPERIMENTAL
