@@ -230,7 +230,7 @@ class LiveFreshnessIsExplicit(unittest.TestCase):
             'spend_limit': {'used_percentage': 3}}})
         self.assertEqual(got, {'five_hour': {'used_percentage': 8.0, 'resets_at': 1}})
         self.assertEqual(sl.extract({}), {})
-        for lang, want in (('tr', '5s %8'), ('en', '5h %8')):   # makinenin diline bağlı kalmasın
+        for lang, want in (('tr', '5s %8'), ('en', '5h 8%')):   # makinenin diline bağlı kalmasın
             with mock.patch.dict(os.environ, {'UT_LANG': lang}):
                 self.assertEqual(sl.line(got), want)
 
