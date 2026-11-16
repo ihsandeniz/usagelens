@@ -313,6 +313,10 @@ class Handler(BaseHTTPRequestHandler):
             wire = cached_wire()
             # ?all=1 query varsa süzME (tüm sağlayıcılar — config UI için)
             if parse_qs(parsed.query).get('all', ['0'])[0] == '1':
+                # Paylaşılan önbellek gizlileri hiç sorgulamaz (API-F001); açıkça istendi → ekle.
+                extra = engine.compute_providers(30, only_hidden=True)
+                if extra:
+                    wire = dict(wire, providers=list(wire.get('providers') or []) + extra)
                 self._json(200, wire); return
             # Yoksa user config'e göre süz
             self._json(200, viewconfig.filter_wire(wire)); return

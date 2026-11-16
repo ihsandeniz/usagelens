@@ -667,7 +667,7 @@ def compute_spend(days: int = 30) -> dict:
 
 
 # ── /v1/usage — interop wire-format (overlay/waybar/eww için stabil sözleşme) ──
-def usage_wire() -> dict:
+def usage_wire(include_hidden: bool = False) -> dict:
     if os.environ.get('USAGE_DEMO') == '1':
         from . import demo
         return demo.usage_wire()
@@ -725,12 +725,13 @@ def usage_wire() -> dict:
         # olmadığı için üç yüzey de kendi sabitini taşıyordu ve sunucu eşiği değiştirse
         # sessizce sapıyorlardı (Y6). `providers[0].limits.thresholds` uyumluluk için kalır.
         'thresholds': limits['thresholds'],
-        'providers': [claude] + compute_providers(30),   # + codex/ollama/openrouter (FAZ 2)
+        'providers': [claude] + compute_providers(30, include_hidden=include_hidden),   # + codex/ollama/openrouter (FAZ 2)
     }
 
 
 # ── FAZ 2: ÇOK-SAĞLAYICI ──────────────────────────────────────────────────────
-def compute_providers(days: int = 30) -> list:
+def compute_providers(days: int = 30, include_hidden: bool = False,
+                      only_hidden: bool = False) -> list:
     """Claude dışı sağlayıcı kartları (openrouter/codex/ollama). Yapılandırılmamış olan
        kart açmaz. Adaptör paketi kendi TTL cache'ini tutar."""
     if os.environ.get('USAGE_DEMO') == '1':
@@ -739,9 +740,13 @@ def compute_providers(days: int = 30) -> list:
     try:
         from . import viewconfig
         from .providers import collect
-        hidden = set(viewconfig.get_config().get('hidden_providers') or ())
-        # Gizli kartın sağlayıcısına istek gitmez (API-F001); Claude gizlenemez.
-        return collect(days, skip=hidden - set(viewconfig.PROTECTED_PROVIDERS))
+        hidden = set(viewconfig.get_config().get('hidden_providers') or ()) \
+            - set(viewconfig.PROTECTED_PROVIDERS)
+        # Gizli kartın sağlayıcısına istek gitmez (API-F001); Claude gizlenemez. Yalnız açıkça
+        # "hepsi" istenince (`providers --all`, `/v1/usage?all=1`) gizliler de sorgulanır.
+        if only_hidden:
+            return collect(days, only=hidden) if hidden else []
+        return collect(days, skip=() if include_hidden else hidden)
     except Exception:
         return []
 

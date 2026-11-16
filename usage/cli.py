@@ -213,7 +213,7 @@ def load_wire(url=None, local=False, timeout=3.0, base=None, all_providers=False
 
 
 def _local_wire(all_providers=False) -> dict:
-    wire = engine.usage_wire()
+    wire = engine.usage_wire(include_hidden=all_providers)
     return wire if all_providers else viewconfig.filter_wire(wire)
 
 

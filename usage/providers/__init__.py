@@ -51,7 +51,7 @@ def name_of(provider_id: str):
     return None
 
 
-def collect(days: int = 30, skip=()) -> list:
+def collect(days: int = 30, skip=(), only=None) -> list:
     """Tüm yapılandırılmış sağlayıcıların kartlarını paralel topla. Bir adaptörün patlaması
        diğerlerini düşürmez (izole try/except).
 
@@ -66,7 +66,8 @@ def collect(days: int = 30, skip=()) -> list:
     try:
         # Her adaptör için future oluştur, sırayı tut
         # Gizli kart = hiç sorgulanmaz (API-F001): süzmek yetmez, istek gitmemeli.
-        mods = [m for m in _ADAPTERS if getattr(m, 'PROVIDER_ID', None) not in set(skip or ())]
+        mods = [m for m in _ADAPTERS if getattr(m, 'PROVIDER_ID', None) not in set(skip or ())
+                and (only is None or getattr(m, 'PROVIDER_ID', None) in set(only))]
         futures = {i: executor.submit(_collect_single, mod, days) for i, mod in enumerate(mods)}
 
         # Tamamlanma sırasına bakılmaksızın, _ADAPTERS sırasında sonuçları topla

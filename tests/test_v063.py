@@ -82,6 +82,20 @@ class GizliSaglayiciIstekTest(unittest.TestCase):
             engine.compute_providers(30)
         cagri.assert_called_once()
 
+    def test_acikca_hepsi_istenince_gizli_de_sorgulanir(self):
+        """`providers --all` / `?all=1` "gizli kartları da göster" diyor (docs/CLI.md)."""
+        from unittest import mock
+        from usage import engine, viewconfig
+        from usage.providers import openai
+        self.assertTrue(viewconfig.save_config({'hidden_providers': ['openai']}))
+        kart = {'id': 'openai', 'name': 'OpenAI', 'kind': 'spend', 'status': 'ok', 'available': True}
+        with mock.patch.object(openai, 'collect', return_value=kart) as cagri:
+            ids = [c['id'] for c in engine.compute_providers(30, include_hidden=True)]
+            self.assertIn('openai', ids)
+            ids = [c['id'] for c in engine.compute_providers(30, only_hidden=True)]
+        self.assertEqual(ids, ['openai'])
+        self.assertEqual(cagri.call_count, 2)
+
     def test_claude_gizlenemez_ve_gizli_liste_ayarda_gorunur(self):
         from usage import providers
         self.assertEqual(providers.name_of('openai'), 'OpenAI')
