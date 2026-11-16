@@ -33,7 +33,8 @@ class WidgetBaslikTest(unittest.TestCase):
         clients = [{'address': f'0x{i}', 'class': 'chrome-127.0.0.1__-Default', 'title': t}
                    for i, t in enumerate(basliklar)]
         r = subprocess.run(['jq', '-r', '--arg', 'c', 'usage-tracker-widget', _widget_sel() + '|.title'],
-                           input=json.dumps(clients), capture_output=True, text=True, check=True)
+                           input=json.dumps(clients), capture_output=True, text=True, encoding='utf-8',
+                           check=True)   # Windows: yerel kod sayfası (cp1252) '·' ve 'ı'yı bozar
         return [s for s in r.stdout.splitlines() if s]
 
     def test_panel_basliklari_eslesir(self):
