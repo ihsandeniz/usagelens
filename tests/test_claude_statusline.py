@@ -190,6 +190,41 @@ class UndoRestores(_Sandbox):                                                # S
         self.assertFalse(cs.undo()['changed'])
         self.assertEqual(self.settings.read_bytes(), before)
 
+    def test_personal_statusline_py_is_not_ours(self):
+        """SEC-F002 (G-gb59vs): `…statusline.py` ile biten her komut bizim sayılıyordu."""
+        for cmd in ('python3 ~/.claude/statusline.py', 'python3 "/home/u/bin/statusline.py"',
+                    'bash ~/statusline.py --wrap', 'node statusline.py'):
+            self.assertFalse(cs.is_ours(cmd), cmd)
+        for cmd in ('python3 "/opt/usagelens/surface/statusline.py"',
+                    '"/usr/bin/python3" "/x/usage-tracker/surface/statusline.py" --wrap',
+                    '"/opt/usagelens/usagelens" statusline', '"C:/a/usage-tracker.exe" statusline'):
+            self.assertTrue(cs.is_ours(cmd), cmd)
+
+    def test_undo_without_record_keeps_personal_line(self):
+        """SEC-F002: kayıt yoksa regex'e güvenip kullanıcının satırını silme."""
+        self.write_settings('{"statusLine": {"type": "command", '
+                            '"command": "python3 ~/.claude/statusline.py"}}')
+        before = self.settings.read_bytes()
+        res = cs.undo()
+        self.assertFalse(res['changed'])
+        self.assertEqual(self.settings.read_bytes(), before)
+
+    def test_undo_without_record_and_lookalike_hook_only_warns(self):
+        """Kayıt yok, komut bizimkine benziyor ama bu kurulumun tam komutu değil → dokunma, uyar."""
+        self.write_settings(json.dumps({'statusLine': {
+            'type': 'command', 'command': 'python3 "/elsewhere/usage-tracker/surface/statusline.py"'}}))
+        before = self.settings.read_bytes()
+        res = cs.undo()
+        self.assertFalse(res['changed'])
+        self.assertEqual(self.settings.read_bytes(), before)
+        self.assertTrue(any(m.startswith('warn|') for m in res['messages']), res)
+
+    def test_undo_without_record_removes_our_exact_command(self):
+        self.write_settings(json.dumps({'model': 'o', 'statusLine': {
+            'type': 'command', 'command': cs.hook_command()}}))
+        self.assertTrue(cs.undo()['changed'])
+        self.assertEqual(json.loads(self.settings.read_text(encoding='utf-8')), {'model': 'o'})
+
     def test_redo_after_undo_keeps_first_backup(self):
         original = '{"model": "first"}'
         self.write_settings(original)

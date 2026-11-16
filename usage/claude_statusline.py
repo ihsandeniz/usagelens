@@ -34,7 +34,10 @@ from . import platform as _paths
 BAK_SUFFIX = '.bak-usage-tracker'
 RECORD_NAME = 'statusline-original.json'
 # Our command, whichever way it was installed. Used only when the record file is gone.
-_OURS_RE = re.compile(r'(statusline\.py"?|usage-tracker(\.exe)?"? statusline)( --wrap)?\s*$')
+# Narrow on purpose (SEC-F002): our script always sits in `surface/`, our binary is named
+# usagelens / usage-tracker. A personal `python3 ~/.claude/statusline.py` must NOT match.
+_OURS_RE = re.compile(r'([\\/]surface[\\/]statusline\.py"?|'
+                      r'(usage-tracker|usagelens)(\.exe)?"? statusline)( --wrap)?\s*$')
 # Characters we refuse to put inside double quotes — they would change the command's meaning.
 _UNSAFE = set('"$`\\\n') if os.name != 'nt' else set('"\n')
 
@@ -254,6 +257,13 @@ def undo() -> dict:
                 'messages': ['info|no usage-tracker status line in settings.json — nothing to undo']}
     rec = _load_record()
     rec_ours = rec.get('ours')
+    if not rec_ours and sl.get('command') not in (hook_command(), hook_command(wrap=True)):
+        # No record of what we wrote: the pattern alone is not proof enough to delete a line
+        # (SEC-F002). Only this install's exact command is removed; anything else is left alone.
+        return {'ok': False, 'changed': False,
+                'messages': ['warn|no setup record and the status line is not this install\'s '
+                             'exact command — not touching it; remove "statusLine" from '
+                             f'{settings_path()} by hand if it is ours']}
     if rec_ours and sl.get('command') != rec_ours:
         return {'ok': False, 'changed': False,
                 'messages': ['warn|the status line changed since setup wrote it — not touching it']}
