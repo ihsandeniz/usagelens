@@ -122,6 +122,84 @@ class BudaTest(unittest.TestCase):
                              ['statusline-ctx-yeni.json', 'statusline-limits.json'])
 
 
+class ElleSifirlamaTest(unittest.TestCase):
+    """G-gb59vs: haftalık limit ELLE sıfırlandı; pencere (resets_at) aynı kaldı, yüzde 98→14 düştü.
+    'Aynı pencerede yüzde yalnız artar' kuralı %14'ü reddedip %98'i günlerce tuttu."""
+
+    def test_buyuk_dusus_yeni_gozlemse_kabul(self):
+        o = dict(w(98.0, W7), at=NOW - 12 * 3600)
+        n = dict(w(14.0, W7), at=NOW - 5)
+        out = sl.merge({'seven_day': o}, {'seven_day': n}, NOW)
+        self.assertEqual(out['seven_day']['used_percentage'], 14.0)
+
+    def test_sifira_inis_kucuk_yuzdede_de_kabul(self):
+        o = dict(w(15.0, W7), at=NOW - 3600)
+        n = dict(w(0.0, W7), at=NOW - 5)
+        self.assertEqual(sl.merge({'seven_day': o}, {'seven_day': n}, NOW)['seven_day']['used_percentage'], 0.0)
+
+    def test_buyuk_dusus_eski_gozlemse_red(self):
+        o = dict(w(98.0, W7), at=NOW - 5)
+        n = dict(w(14.0, W7), at=NOW - 3600)
+        self.assertEqual(sl.merge({'seven_day': o}, {'seven_day': n}, NOW)['seven_day']['used_percentage'], 98.0)
+
+    def test_kucuk_dusus_gurultu_sayilir(self):
+        o = dict(w(69.0, W7), at=NOW - 900)
+        n = dict(w(59.0, W7), at=NOW - 5)
+        self.assertEqual(sl.merge({'seven_day': o}, {'seven_day': n}, NOW)['seven_day']['used_percentage'], 69.0)
+
+    def test_sifirlamadan_onceki_bayat_oturum_geri_getiremez(self):
+        sifir = sl.merge({'seven_day': dict(w(98.0, W7), at=NOW - 7200)},
+                         {'seven_day': dict(w(14.0, W7), at=NOW - 60)}, NOW)
+        bayat = {'seven_day': dict(w(98.0, W7), at=NOW - 3600)}   # sıfırlamadan önce gözlenmiş
+        out = sl.merge(sifir, bayat, NOW)
+        self.assertEqual(out['seven_day']['used_percentage'], 14.0)
+        # sıfırlamadan SONRA gözlenen artış normal kurala döner
+        out = sl.merge(out, {'seven_day': dict(w(16.0, W7), at=NOW - 10)}, NOW)
+        self.assertEqual(out['seven_day']['used_percentage'], 16.0)
+
+
+class KayitTazeligiTest(unittest.TestCase):
+    """G-gb59vs: dosyanın üst `at`'i en taze pencereden geliyordu; 12 saattir güncellenmeyen
+    seven_day, five_hour taze diye 'live:true stale:false' görünüyordu."""
+
+    def _yaz(self, td, d):
+        import json
+        (Path(td) / 'statusline-limits.json').write_text(json.dumps(d), encoding='utf-8')
+
+    def test_tazelik_en_eski_pencereden(self):
+        import tempfile
+        from unittest import mock
+        from usage import live
+        t = time_now()
+        with tempfile.TemporaryDirectory() as td:
+            self._yaz(td, {'at': t, 'windows': {
+                'five_hour': {'used_percentage': 10.0, 'resets_at': t + 9000, 'at': t},
+                'seven_day': {'used_percentage': 98.0, 'resets_at': t + 200000, 'at': t - 12 * 3600}}})
+            with mock.patch('usage.platform.state_dir', return_value=Path(td)):
+                at, _ = live._load_statusline()
+        self.assertAlmostEqual(at, t - 12 * 3600, delta=1)
+
+    def test_uctan_uca_sifirlama_kayda_gecer(self):
+        import io, json, os, tempfile
+        from unittest import mock
+        from usage import live
+        t = time_now()
+        with tempfile.TemporaryDirectory() as td, tempfile.NamedTemporaryFile() as tp:
+            self._yaz(td, {'at': t - 60, 'windows': {
+                'five_hour': {'used_percentage': 9.0, 'resets_at': t + 9000, 'at': t - 60},
+                'seven_day': {'used_percentage': 98.0, 'resets_at': t + 200000, 'at': t - 12 * 3600}}})
+            payload = {'transcript_path': tp.name, 'rate_limits': {
+                'five_hour': {'used_percentage': 10, 'resets_at': t + 9000},
+                'seven_day': {'used_percentage': 14, 'resets_at': t + 200000}}}
+            with mock.patch('usage.platform.state_dir', return_value=Path(td)), \
+                    mock.patch('sys.stdin', io.StringIO(json.dumps(payload))), \
+                    mock.patch('sys.stdout', io.StringIO()):
+                sl.main()
+                at, res = live._load_statusline()
+        self.assertEqual(res['windows']['seven_day']['utilization'], 14.0)
+        self.assertLess(time_now() - at, live.LIVE_FRESHNESS_SEC)
+
+
 def time_now():
     import time
     return time.time()

@@ -216,14 +216,22 @@ def _load_statusline():
         at, wins = d.get('at'), d.get('windows')
         if not isinstance(at, (int, float)) or not isinstance(wins, dict):
             return None
-        windows = {}
+        windows, gozlemler = {}, []
         for k, w in wins.items():
             pct = w.get('used_percentage') if isinstance(w, dict) else None
             if isinstance(pct, (int, float)) and not isinstance(pct, bool):
                 windows[k] = {'utilization': round(float(pct), 1), 'resets_at': w.get('resets_at'),
                               'remaining': None, 'overage': None}
+                wat = w.get('at')
+                if isinstance(wat, (int, float)) and not isinstance(wat, bool):
+                    gozlemler.append(float(wat))
         if not windows:
             return None
+        # Tazelik EN ESKİ pencereden: üst `at` en taze pencereden gelir; takılı kalmış bir
+        # pencere (11-16: seven_day 12 sa güncellenmedi) öbürü taze diye "canlı" görünüyordu.
+        # Bayat sayılınca fetch ağa çıkar ve gerçek değeri getirir (G-gb59vs).
+        if gozlemler:
+            at = min(gozlemler)
         _, _, tier = _read_token()
         return (float(at), {'ok': True, 'error': None, 'raw': None, 'rateLimitTier': tier,
                             'windows': windows, 'source': 'statusline'})

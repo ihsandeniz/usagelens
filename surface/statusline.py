@@ -54,6 +54,29 @@ def _reset(w):
     return r if isinstance(r, (int, float)) and not isinstance(r, bool) else None
 
 
+# Elle sıfırlama (abonelik sayfasındaki "limiti sıfırla" hakkı) pencereyi DEĞİŞTİRMEZ:
+# `resets_at` aynı kalır, yüzde düşer (2026-11-16 ölçüldü: 98 → 14, resets_at aynı).
+# Bayat oturum gürültüsü (10-05: 69↔59) küçük düşüştür; sıfırlama en az yarıya iner.
+SIFIRLAMA_MIN_DUSUS = 10.0
+
+
+def sifirlama_mi(eski_pct: float, yeni_pct: float) -> bool:
+    return eski_pct - yeni_pct >= SIFIRLAMA_MIN_DUSUS and yeni_pct <= eski_pct / 2 or (
+        yeni_pct == 0 and eski_pct > 0)
+
+
+def _at(w, ad='at') -> float:
+    v = w.get(ad) if isinstance(w, dict) else None
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else 0.0
+
+
+def _tasi(secilen: dict, eski: dict) -> dict:
+    """Sıfırlama tabanı aynı pencere boyunca korunur (yeni gelen kayıt onu bilmez)."""
+    if 'taban_at' in eski and 'taban_at' not in secilen:
+        return dict(secilen, taban_at=eski['taban_at'])
+    return secilen
+
+
 def merge(eski: dict, yeni: dict, now: float) -> dict:
     """Dosyadaki kayıtla bu oturumun gördüğünü birleştir — son yazan kazanmasın.
 
@@ -66,7 +89,10 @@ def merge(eski: dict, yeni: dict, now: float) -> dict:
       - yeni gelende pencere yoksa eldeki geçerli kayıt korunur;
       - yeni gelen daha ESKİ bir pencereye aitse yok sayılır;
       - aynı pencerede yüzde yalnız artar (kullanım pencere içinde azalmaz) → büyüğü kalır;
-        eşitse gözlem anı (`at`) yeni olan kalır.
+        eşitse gözlem anı (`at`) yeni olan kalır;
+      - İSTİSNA elle sıfırlama: aynı pencerede yüzde büyük düştüyse (`sifirlama_mi`) ve bu
+        gözlem eldekinden YENİYSE kabul edilir; anı `taban_at` olur ve o pencere boyunca bu
+        andan önce gözlenmiş (sıfırlama öncesi) değerler yok sayılır (G-gb59vs).
     Oku-birleştir-yaz atomik değil; iki oturumun aynı milisaniyede yazması nadirdir ve
     sonraki çizim düzeltir.
     """
@@ -90,10 +116,17 @@ def merge(eski: dict, yeni: dict, now: float) -> dict:
         if ro is not None and rn is not None and rn < ro - AYNI_PENCERE_SN:
             out[k] = o                                   # bayat oturum, eski pencere
         elif ro is not None and rn is not None and abs(rn - ro) <= AYNI_PENCERE_SN:
-            if n['used_percentage'] != o['used_percentage']:
-                out[k] = n if n['used_percentage'] > o['used_percentage'] else o
+            po, pn = o['used_percentage'], n['used_percentage']
+            ao, an = _at(o), _at(n)
+            taban = _at(o, 'taban_at')
+            if taban and an < taban:
+                out[k] = o                               # elle sıfırlamadan önce gözlenmiş
+            elif an > ao and sifirlama_mi(po, pn):
+                out[k] = dict(n, taban_at=an)            # elle sıfırlama: pencere aynı, yüzde düştü
+            elif pn != po:
+                out[k] = _tasi(n if pn > po else o, o)
             else:
-                out[k] = n if (n.get('at') or 0) >= (o.get('at') or 0) else o
+                out[k] = _tasi(n if an >= ao else o, o)
         else:
             out[k] = n                                   # yeni pencere (ya da reset bilinmiyor)
     return out
