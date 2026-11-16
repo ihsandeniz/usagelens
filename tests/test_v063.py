@@ -94,5 +94,44 @@ class GizliSaglayiciIstekTest(unittest.TestCase):
         self.assertIn('hide', metin.lower())
 
 
+class StartShEnvTest(unittest.TestCase):
+    """SEC-F001: start.sh anahtar dosyasını `. "$ENV_FILE"` ile kabuk kodu olarak çalıştırıyordu;
+    değerdeki `$(…)` ya da `;` komut olarak koşuyordu."""
+
+    def _kos(self, env_metni):
+        import os, tempfile
+        with tempfile.TemporaryDirectory() as td:
+            td = Path(td)
+            (td / 'cfg' / 'usage-tracker').mkdir(parents=True)
+            (td / 'cfg' / 'usage-tracker' / 'env').write_text(env_metni, encoding='utf-8')
+            (td / 'bin').mkdir()
+            sahte = td / 'bin' / 'python3'     # server.py yerine ortamı döken sahte yorumlayıcı
+            sahte.write_text('#!/bin/sh\nenv > "$DOKUM"\n', encoding='utf-8')
+            sahte.chmod(0o755)
+            env = {'PATH': f"{td / 'bin'}:/usr/bin:/bin", 'HOME': str(td),
+                   'XDG_CONFIG_HOME': str(td / 'cfg'), 'DOKUM': str(td / 'dokum'), 'KANIT': str(td)}
+            r = subprocess.run(['timeout', '20', 'bash', str(ROOT / 'start.sh')], env=env,
+                               cwd=td, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            dokum = dict(l.split('=', 1) for l in (td / 'dokum').read_text().splitlines() if '=' in l)
+            return dokum, sorted(x.name for x in td.iterdir())
+
+    def test_deger_komut_olarak_calismaz(self):
+        dokum, dosyalar = self._kos('OPENAI_API_KEY=$(touch "$KANIT/pwn1")\n'
+                                    'DEEPINFRA_API_KEY=a; touch "$KANIT/pwn2"\n'
+                                    'touch "$KANIT/pwn3"\n')
+        self.assertEqual([d for d in dosyalar if d.startswith('pwn')], [])
+        self.assertEqual(dokum.get('OPENAI_API_KEY'), '$(touch "$KANIT/pwn1")')
+        self.assertEqual(dokum.get('DEEPINFRA_API_KEY'), 'a; touch "$KANIT/pwn2"')
+
+    def test_normal_dosya_okunur(self):
+        dokum, _ = self._kos('# yorum\n\nOPENROUTER_API_KEY=sk-or-123\n# OPENAI_API_KEY=\n'
+                             'ELEVENLABS_API_KEY="tirnakli"\nexport HF_TOKEN=hf_x\n')
+        self.assertEqual(dokum.get('OPENROUTER_API_KEY'), 'sk-or-123')
+        self.assertEqual(dokum.get('ELEVENLABS_API_KEY'), 'tirnakli')
+        self.assertEqual(dokum.get('HF_TOKEN'), 'hf_x')
+        self.assertNotIn('OPENAI_API_KEY', dokum)
+
+
 if __name__ == '__main__':
     unittest.main()
