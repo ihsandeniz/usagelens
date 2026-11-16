@@ -594,7 +594,8 @@ def _preview_keys() -> dict:
     return {'lines': [
         f'store: {_probe_keys()["store"]}',
         'Keys are written by name and value; the wizard never prints a value back.',
-        'Nothing is sent anywhere — the tool talks to a provider only when you ask it to.']}
+        'The wizard sends nothing. While a key is set (here or in your shell), the panel '
+        'queries that provider on every refresh; hide its card to stop the requests.']}
 
 
 def _do_keys(opts: dict) -> dict:

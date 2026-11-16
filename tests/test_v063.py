@@ -44,5 +44,55 @@ class WidgetBaslikTest(unittest.TestCase):
         self.assertEqual(self._eslesen(['Gmail - Chromium', 'usage notes.txt']), [])
 
 
+class GizliSaglayiciIstekTest(unittest.TestCase):
+    """API-F001: kart gizli olsa da anahtar ortamdaysa o servise istek gidiyordu
+    (`hidden_providers` yalnız çıktıyı süzüyordu); sihirbaz metni tersini söylüyordu."""
+
+    def setUp(self):
+        import tempfile
+        from unittest import mock
+        self.td = tempfile.TemporaryDirectory()
+        self.addCleanup(self.td.cleanup)
+        self.p = mock.patch.dict('os.environ', {'XDG_CONFIG_HOME': self.td.name,
+                                                'XDG_STATE_HOME': self.td.name,
+                                                'OPENAI_API_KEY': 'sk-test-yok'})
+        self.p.start()
+        self.addCleanup(self.p.stop)
+        from usage import viewconfig      # yol import anında sabitlenir: gerçek ~/.config'e yazmasın
+        for ad in ('CONFIG_PATH', 'LEGACY_CONFIG_PATH'):
+            q = mock.patch.object(viewconfig, ad, Path(self.td.name) / f'{ad}.json')
+            q.start()
+            self.addCleanup(q.stop)
+
+    def test_gizli_saglayiciya_istek_gitmez(self):
+        from unittest import mock
+        from usage import engine, viewconfig
+        from usage.providers import openai
+        self.assertTrue(viewconfig.save_config({'hidden_providers': ['openai']}))
+        with mock.patch.object(openai, 'collect', return_value=None) as cagri:
+            engine.compute_providers(30)
+        cagri.assert_not_called()
+
+    def test_gizli_olmayan_sorgulanir(self):
+        from unittest import mock
+        from usage import engine, viewconfig
+        from usage.providers import openai
+        self.assertTrue(viewconfig.save_config({'hidden_providers': []}))
+        with mock.patch.object(openai, 'collect', return_value=None) as cagri:
+            engine.compute_providers(30)
+        cagri.assert_called_once()
+
+    def test_claude_gizlenemez_ve_gizli_liste_ayarda_gorunur(self):
+        from usage import providers
+        self.assertEqual(providers.name_of('openai'), 'OpenAI')
+        self.assertIsNone(providers.name_of('yok-boyle'))
+
+    def test_sihirbaz_metni_kodu_anlatir(self):
+        from usage import wizard
+        metin = ' '.join(wizard._preview_keys()['lines'])
+        self.assertNotIn('only when you ask', metin)
+        self.assertIn('hide', metin.lower())
+
+
 if __name__ == '__main__':
     unittest.main()

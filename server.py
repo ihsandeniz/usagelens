@@ -331,6 +331,13 @@ class Handler(BaseHTTPRequestHandler):
             available = [{'id': p.get('id'), 'name': p.get('name')}
                         for p in (wire.get('providers') or [])
                         if isinstance(p, dict) and p.get('id')]
+            # Gizli kart artık hiç sorgulanmıyor (wire'da yok); geri açılabilsin diye listede kalır.
+            from usage import providers as _providers
+            seen = {a['id'] for a in available}
+            for pid in cfg.get('hidden_providers') or []:
+                name = _providers.name_of(pid)
+                if name and pid not in seen:
+                    available.append({'id': pid, 'name': name})
             self._json(200, {'config': cfg, 'available': available}); return
 
         # statik dosya (web/)

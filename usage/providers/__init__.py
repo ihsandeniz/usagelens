@@ -43,7 +43,15 @@ EXPERIMENTAL = frozenset({'deepseek', 'novita', 'deepinfra', 'huggingface', 'tog
                           'cody', 'windsurf'})
 
 
-def collect(days: int = 30) -> list:
+def name_of(provider_id: str):
+    """Kart adı — gizli (hiç sorgulanmayan) sağlayıcıyı ayar ekranında listelemek için."""
+    for mod in _ADAPTERS:
+        if getattr(mod, 'PROVIDER_ID', None) == provider_id:
+            return getattr(mod, 'PROVIDER_NAME', provider_id)
+    return None
+
+
+def collect(days: int = 30, skip=()) -> list:
     """Tüm yapılandırılmış sağlayıcıların kartlarını paralel topla. Bir adaptörün patlaması
        diğerlerini düşürmez (izole try/except).
 
@@ -57,11 +65,13 @@ def collect(days: int = 30) -> list:
 
     try:
         # Her adaptör için future oluştur, sırayı tut
-        futures = {i: executor.submit(_collect_single, mod, days) for i, mod in enumerate(_ADAPTERS)}
+        # Gizli kart = hiç sorgulanmaz (API-F001): süzmek yetmez, istek gitmemeli.
+        mods = [m for m in _ADAPTERS if getattr(m, 'PROVIDER_ID', None) not in set(skip or ())]
+        futures = {i: executor.submit(_collect_single, mod, days) for i, mod in enumerate(mods)}
 
         # Tamamlanma sırasına bakılmaksızın, _ADAPTERS sırasında sonuçları topla
         # Her adaptör için kalan bütçeyi hesapla (deadline paylaşımı)
-        for i, mod in enumerate(_ADAPTERS):
+        for i, mod in enumerate(mods):
             remaining = max(0.0, deadline - time.monotonic())
             try:
                 card = futures[i].result(timeout=remaining)

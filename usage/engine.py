@@ -737,8 +737,11 @@ def compute_providers(days: int = 30) -> list:
         from . import demo
         return demo.collect(days)
     try:
+        from . import viewconfig
         from .providers import collect
-        return collect(days)
+        hidden = set(viewconfig.get_config().get('hidden_providers') or ())
+        # Gizli kartın sağlayıcısına istek gitmez (API-F001); Claude gizlenemez.
+        return collect(days, skip=hidden - set(viewconfig.PROTECTED_PROVIDERS))
     except Exception:
         return []
 
