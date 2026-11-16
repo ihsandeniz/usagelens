@@ -133,5 +133,36 @@ class StartShEnvTest(unittest.TestCase):
         self.assertNotIn('OPENAI_API_KEY', dokum)
 
 
+class GuardBilinmeyenPencereTest(unittest.TestCase):
+    """MNT-F001: Codex 5 saatlik pencere dolup değeri bilinmez olunca, haftalık biliniyorsa
+    guard `ok`/0 dönüyordu; docs/CLI.md bu durum için 3 (unknown) vaat ediyor."""
+
+    TH = {'warn': 75, 'crit': 90}
+
+    def _wire(self, session, weekly):
+        return {'thresholds': self.TH, 'providers': [
+            {'id': 'claude', 'name': 'Claude', 'limits': {
+                'session': {'pct': 10.0}, 'weekly': {'pct': 20.0}, 'weeklyModel': {'pct': None}}},
+            {'id': 'codex', 'name': 'Codex', 'limits': {'session': session, 'weekly': weekly}}]}
+
+    def test_suresi_dolmus_pencere_bilinmeyen(self):
+        from usage import cli
+        v = cli.evaluate(self._wire({'pct': None, 'expired': True}, {'pct': 40.0}), provider='codex')
+        self.assertEqual((v['level'], v['exitCode']), ('unknown', 3), v['message'])
+
+    def test_esik_asan_bilinen_pencere_yine_kazanir(self):
+        from usage import cli
+        v = cli.evaluate(self._wire({'pct': None, 'expired': True}, {'pct': 95.0}), provider='codex')
+        self.assertEqual(v['exitCode'], 2)
+
+    def test_uygulanamaz_pencere_claude_guard_bozmaz(self):
+        """Claude weeklyModel normalde pct:null (model başı pencere yok) — bu 'bilinmeyen' değil."""
+        from usage import cli
+        v = cli.evaluate(self._wire({'pct': 5.0}, {'pct': 5.0}), provider='claude')
+        self.assertEqual((v['level'], v['exitCode']), ('ok', 0))
+        v = cli.evaluate(self._wire({'pct': 5.0}, {'pct': 5.0}), provider='all')
+        self.assertEqual(v['exitCode'], 0)
+
+
 if __name__ == '__main__':
     unittest.main()

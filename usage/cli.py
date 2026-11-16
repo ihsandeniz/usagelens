@@ -289,7 +289,8 @@ def scopes_of(wire, provider='claude') -> list:
                     out.append({'provider': cid, 'providerName': name, 'scope': f'{cid}/{key}',
                                 'pct': bar.get('pct'), 'resetInSec': bar.get('resetInSec'),
                                 'calibSuspect': bar.get('calibSuspect'),
-                                'stale': stale, 'ageSec': age if stale else None})
+                                'stale': stale, 'ageSec': age if stale else None,
+                                'expired': bool(bar.get('expired'))})
             continue
 
         for key in ('limit', 'quota'):
@@ -343,6 +344,12 @@ def evaluate(wire, provider='claude', threshold=None, warn=None, crit=None) -> d
     # job, and only the specific one tells the user which wall they are near.
     if stale and level == 'ok':
         level = 'unknown'
+    # A window that rolled over (`expired`, Codex) has an unknown value, not 0% (docs/CLI.md):
+    # the known walls being low says nothing about it, so `ok` becomes `unknown`/3 (MNT-F001).
+    # `pct: null` without `expired` is a window that does not apply (Claude's weeklyModel).
+    expired = [s for s in scopes if s.get('expired') and finite_number(s.get('pct')) is None]
+    if expired and level == 'ok':
+        level = 'unknown'
 
     crossed = eff_crit if level == 'crit' else eff_warn if level == 'warn' else None
 
@@ -353,6 +360,8 @@ def evaluate(wire, provider='claude', threshold=None, warn=None, crit=None) -> d
         message = f'{worst["scope"]} at {fmt_pct(pct)}'
         if crossed is not None:
             message += f' (over {round_half_up(crossed)})'
+        if expired and level == 'unknown' and not stale:
+            message += f' — {", ".join(s["scope"] for s in expired)}: window reset, value unknown'
         if stale:
             age = fmt_duration(age_sec)
             message += f' — stale{f" ({age} old)" if age else ""}: the last live reading failed'
