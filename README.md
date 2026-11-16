@@ -27,6 +27,10 @@ stdlib Python — nothing to compile.
   Claude Code login on the machine no request is made.
 - **Real spend.** Token counts from your transcripts × real model prices: today, 30 days,
   per model. On a subscription that is the API-equivalent value, not your bill.
+- **Other tools.** Codex, local runners (Ollama, LM Studio, Jan) and a few hosted APIs get their
+  own cards. **Experimental** (log format or reply not yet confirmed on a real install, cards
+  marked `experimental`): Aider, Continue, Cody, Windsurf, DeepSeek, Novita, DeepInfra,
+  Hugging Face, Together — see [docs/GUIDE.md](docs/GUIDE.md#experimental-providers).
 - **Where you look.** Web panel, waybar badge `◐ S13% W18%`, floating widget, tray icon,
   phone badge, and a CLI (`usagelens usage`, `guard`, `watch --notify`).
 

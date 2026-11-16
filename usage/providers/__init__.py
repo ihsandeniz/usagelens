@@ -39,8 +39,9 @@ def _collect_single(mod, days):
 #: Başarılı bir yanıtı hiç görülmemiş adaptörler (anahtarı olan kimse doğrulamadı): kartları
 #: `experimental: True` taşır, panel rozetini gösterir, belge onları ayrı listeler (v0.6.2).
 #: Biri doğrulanınca buradan çıkar — tek yer.
+#: Aider ve Continue de burada: başlıkları "alan adları ADAY — canlı doğrulanacak" diyor.
 EXPERIMENTAL = frozenset({'deepseek', 'novita', 'deepinfra', 'huggingface', 'together',
-                          'cody', 'windsurf'})
+                          'cody', 'windsurf', 'aider', 'continue'})
 
 
 def name_of(provider_id: str):

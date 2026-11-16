@@ -217,8 +217,8 @@ invent one.
 | Hugging Face | `HUGGINGFACE_API_KEY` / `HF_TOKEN` | quota | <https://huggingface.co/settings/tokens> |
 | Together | `TOGETHER_API_KEY` | **nothing — Together publishes no usage endpoint**; the card only checks the key | <https://api.together.xyz/settings/api-keys> |
 
-The local-log adapters for **Cody** and **Windsurf** are in the same state: detection works,
-the log format has not been confirmed on a real install.
+The local-log adapters for **Cody**, **Windsurf**, **Aider** and **Continue** are in the same
+state: detection works, the log format has not been confirmed on a real install.
 
 After editing keys, restart the server: `./service.sh restart` (or re-run `./start.sh`).
 
@@ -248,7 +248,7 @@ not your balance.
 |---|---|---|
 | **Spend** | Today / Yesterday / 30-day **$** + per-model + 30-day chart | `~/.claude/projects/**/*.jsonl` tokens × real prices |
 | **Limits** | Session (5h) + Weekly usage %, reset countdown | Anthropic's own `/api/oauth/usage` (real), local estimate as fallback |
-| **Providers** | 16 adapters: real $ (OpenRouter, OpenAI), quota (ElevenLabs), local (Ollama, LM Studio, Jan), local-log tokens (Codex, Aider, Continue) — plus experimental ones (DeepSeek, Novita, DeepInfra, Hugging Face, Together, Cody, Windsurf; see *Experimental providers*) | each provider's API / local files |
+| **Providers** | 16 adapters: real $ (OpenRouter, OpenAI), quota (ElevenLabs), local (Ollama, LM Studio, Jan), local-log tokens (Codex) — plus experimental ones (DeepSeek, Novita, DeepInfra, Hugging Face, Together, Cody, Windsurf, Aider, Continue; see *Experimental providers*) | each provider's API / local files |
 
 ### Is the data real?
 
@@ -515,7 +515,7 @@ to it; the short version is *write the failing test first, and assert the number
   - real $: OpenRouter, OpenAI (Costs API, admin key), DeepSeek *(balance API — documented, candidate)*
   - credit/quota: ElevenLabs, HuggingFace, Together, Novita, DeepInfra *(some candidate — verify with a live key)*
   - local ($0): Ollama, LM Studio, Jan
-  - local-log tokens: Codex, Aider, Continue, Cody, Windsurf
+  - local-log tokens: Codex; Aider, Continue, Cody, Windsurf *(experimental — log format unconfirmed)*
 - [x] waybar badge + movable/resizable floating widget
 - [x] Per-provider data selection (⚙ View tab → `view_config.json`; waybar/widget/panel obey)
 - [x] Optional native system-tray icon (Qt `QSystemTrayIcon`; SNI → waybar tray)

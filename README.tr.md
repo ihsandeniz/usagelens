@@ -227,7 +227,7 @@ Sihirbazın doğrulama adımı sisteminize en uygun olanı önerir ve yapıştı
 |---|---|---|
 | **Harcama** | Bugün / Dün / 30 gün **$** + model bazlı + 30 günlük grafik | `~/.claude/projects/**/*.jsonl` token'ları × gerçek fiyat |
 | **Limit** | Oturum (5s) + Haftalık kullanım %'si, reset geri sayımı | Anthropic'in kendi `/api/oauth/usage` ucu (gerçek), yoksa yerel tahmin |
-| **Sağlayıcılar** | 16 adaptör: gerçek $ (OpenRouter, OpenAI), kota (ElevenLabs), yerel (Ollama, LM Studio, Jan), lokal-log token (Codex, Aider, Continue) — artı **deneysel** olanlar (DeepSeek, Novita, DeepInfra, Hugging Face, Together, Cody, Windsurf: başarılı bir yanıtları henüz hiç görülmedi, kartları `experimental` işaretli; ayrıntı [docs/GUIDE.md](docs/GUIDE.md#experimental-providers)) | her sağlayıcının API'si / yerel dosyaları |
+| **Sağlayıcılar** | 16 adaptör: gerçek $ (OpenRouter, OpenAI), kota (ElevenLabs), yerel (Ollama, LM Studio, Jan), lokal-log token (Codex) — artı **deneysel** olanlar (DeepSeek, Novita, DeepInfra, Hugging Face, Together, Cody, Windsurf, Aider, Continue: başarılı bir yanıtları henüz hiç görülmedi, kartları `experimental` işaretli; ayrıntı [docs/GUIDE.md](docs/GUIDE.md#experimental-providers)) | her sağlayıcının API'si / yerel dosyaları |
 
 ### Veri gerçek mi?
 
