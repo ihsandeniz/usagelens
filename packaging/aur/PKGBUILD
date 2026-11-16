@@ -18,7 +18,7 @@
 
 _name=usagelens
 pkgname=$_name
-pkgver=0.6.2
+pkgver=0.6.3
 pkgrel=1
 pkgdesc='Claude / AI usage, limits and real spend on your desktop — panel, waybar badge, CLI (stdlib only)'
 arch=('any')

@@ -6,7 +6,7 @@ already on your disk.** Formerly *usage-tracker* — the old GitHub address redi
 ![badge → panel → Limit Black Box (demo data)](docs/demo.gif)
 
 ```bash
-pipx install git+https://github.com/ihsandeniz/usagelens.git@v0.6.2 && usagelens setup
+pipx install git+https://github.com/ihsandeniz/usagelens.git@v0.6.3 && usagelens setup
 ```
 
 Needs Python 3.9+ (`python3 --version`); on older Pythons pipx stops with an unclear
