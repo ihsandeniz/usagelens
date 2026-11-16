@@ -7,6 +7,8 @@ Guards: (1) no percent before the window is measured (a 200k guess showed a 19 %
 import importlib
 import json
 import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -19,16 +21,34 @@ def _usage_line(total, model='claude-opus-5-5', mid='m1'):
                            'cache_creation_input_tokens': 0}}})
 
 
+def _live_child(compact_pct=None):
+    """A live process to stand in for the Claude Code session.
+
+    `_compact_pct` reads the session's own environment first (/proc/<pid>/environ). Using the
+    test runner's pid made the result depend on whoever runs the suite: inside Claude Code,
+    CLAUDE_AUTOCOMPACT_PCT_OVERRIDE is set and wins over settings.json. The child gets an
+    environment we control."""
+    env = {k: v for k, v in os.environ.items() if k != 'CLAUDE_AUTOCOMPACT_PCT_OVERRIDE'}
+    if compact_pct is not None:
+        env['CLAUDE_AUTOCOMPACT_PCT_OVERRIDE'] = str(compact_pct)
+    return subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(120)'], env=env)
+
+
 class ContextTest(unittest.TestCase):
+    child_pct = None
+
     def setUp(self):
+        self.child = _live_child(self.child_pct)
+        self.addCleanup(self._stop_child)
+        pid = self.child.pid
         self.tmp = tempfile.TemporaryDirectory()
         root = Path(self.tmp.name)
         os.environ['CLAUDE_CONFIG_DIR'] = str(root)
         (root / 'sessions').mkdir()
         (root / 'projects' / 'proj').mkdir(parents=True)
         (root / 'settings.json').write_text(json.dumps({'env': {'CLAUDE_AUTOCOMPACT_PCT_OVERRIDE': '55'}}), encoding='utf-8')
-        (root / 'sessions' / f'{os.getpid()}.json').write_text(json.dumps(
-            {'pid': os.getpid(), 'sessionId': 'live', 'cwd': str(root), 'name': 'live-one', 'status': 'idle'}), encoding='utf-8')
+        (root / 'sessions' / f'{pid}.json').write_text(json.dumps(
+            {'pid': pid, 'sessionId': 'live', 'cwd': str(root), 'name': 'live-one', 'status': 'idle'}), encoding='utf-8')
         (root / 'sessions' / '999999.json').write_text(json.dumps(
             {'pid': 999999, 'sessionId': 'dead', 'cwd': str(root)}), encoding='utf-8')
         (root / 'projects' / 'proj' / 'live.jsonl').write_text('\n'.join([
@@ -40,9 +60,21 @@ class ContextTest(unittest.TestCase):
         from usage import context
         self.ctx = importlib.reload(context)
 
+    def _stop_child(self):
+        self.child.kill()
+        self.child.wait()
+
     def tearDown(self):
         os.environ.pop('CLAUDE_CONFIG_DIR', None)
         self.tmp.cleanup()
+
+    def _drift_session(self):
+        self.ctx._CACHE['live'] = {'at': 1e18, 'total': 180_000, 'error': None, 'data': {
+            'model': 'claude-opus-5-5', 'window': 1_000_000, 'measured_total': 180_000,
+            'categories': [{'name': 'Messages', 'tokens': 140_000, 'kind': 'used'},
+                           {'name': 'Free space', 'tokens': 787_000, 'kind': 'free'}],
+            'memory_files': [], 'skills': [], 'agents': [], 'mcp_tools': []}}
+        return self.ctx.compute(breakdown=False)['sessions'][0]
 
     def test_dead_pid_skipped_and_last_real_usage_wins(self):
         r = self.ctx.compute(breakdown=False)
@@ -56,12 +88,7 @@ class ContextTest(unittest.TestCase):
         self.assertIsNone(s['compact_at'])
 
     def test_drift_goes_to_messages(self):
-        self.ctx._CACHE['live'] = {'at': 1e18, 'total': 180_000, 'error': None, 'data': {
-            'model': 'claude-opus-5-5', 'window': 1_000_000, 'measured_total': 180_000,
-            'categories': [{'name': 'Messages', 'tokens': 140_000, 'kind': 'used'},
-                           {'name': 'Free space', 'tokens': 787_000, 'kind': 'free'}],
-            'memory_files': [], 'skills': [], 'agents': [], 'mcp_tools': []}}
-        s = self.ctx.compute(breakdown=False)['sessions'][0]
+        s = self._drift_session()
         cats = {c['name']: c['tokens'] for c in s['breakdown']['categories']}
         self.assertEqual(cats['Messages'], 150_000)
         self.assertEqual(cats['Free space'], 777_000)
@@ -72,6 +99,15 @@ class ContextTest(unittest.TestCase):
         before = sorted(p.name for p in self.root.rglob('*'))
         self.ctx.compute(breakdown=False)
         self.assertEqual(before, sorted(p.name for p in self.root.rglob('*')))
+
+
+@unittest.skipUnless(Path('/proc/self/environ').exists(), 'session env is read from /proc')
+class SessionEnvWinsTest(ContextTest):
+    """The session's own CLAUDE_AUTOCOMPACT_PCT_OVERRIDE beats settings.json (55 there)."""
+    child_pct = 80
+
+    def test_drift_goes_to_messages(self):
+        self.assertEqual(self._drift_session()['compact_at'], 800_000)
 
 
 if __name__ == '__main__':
