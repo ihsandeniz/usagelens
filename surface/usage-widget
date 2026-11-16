@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+# usagelens floating widget — opens the web panel as a MOVABLE + RESIZABLE app window.
 # usage-tracker floating widget — opens the web panel as a MOVABLE + RESIZABLE app window.
 # Uses a Chromium-family browser in --app mode (borderless), with its own profile so it
 # remembers the size/position you give it. On Hyprland it's floated + pinned automatically
@@ -41,8 +41,9 @@ pick_browser() {
 on_hyprland() { command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; }
 
 # Chromium gives --app windows their own class (chrome-<slug>), ignoring --class, so we match
-# on the page title instead — it starts with "usage-tracker" and nothing else does.
-SEL='.[]|select((.class==$c) or (.title|startswith("usage-tracker")))'
+# on the page title instead — it starts with "usagelens" (0.6.2+, web/app.js pageTitle) or the
+# pre-0.6.2 "usage-tracker" (a window opened by an older build), and nothing else does.
+SEL='.[]|select((.class==$c) or (.title|startswith("usagelens")) or (.title|startswith("usage-tracker")))'
 
 # Hyprland conf + Lua ayarı: önce Lua biçimi, "ok" dönmezse eski biçim (BL-465; Lua'da eski biçim ölü)
 hdsp() { local lua=$1; shift; [ "$(hyprctl dispatch "$lua" 2>&1)" = "ok" ] || hyprctl dispatch "$@"; }
