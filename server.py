@@ -435,6 +435,10 @@ class Handler(BaseHTTPRequestHandler):
 
 # CLI alt komutları (usage/cli.py). Tek giriş noktası bilinçli: donmuş paketin içinde
 # ikinci bir çalıştırılabilir yok — `usage-tracker.exe guard` çalışmak zorunda.
+#: The name the program introduces itself with (`--version`, `--help`). The old name
+#: `usage-tracker` stays a working command (pyproject.toml [project.scripts]).
+PROG = 'usagelens'
+
 CLI_COMMANDS = ('usage', 'providers', 'guard', 'watch', 'doctor', 'config', 'kanit',
                 'setup', 'panel', 'statusline')
 
@@ -452,7 +456,9 @@ def main(argv=None):
 
     if '--version' in argv or '-V' in argv:
         # Tek kaynak: VERSION. `git tag` ile hizalı olduğunu CI doğrular (.github/workflows/ci.yml)
-        print(f'usage-tracker {VERSION}')
+        # `usagelens X.Y.Z`: the wizard reads the last word (usage/wizard.py:installed_version),
+        # so older installed copies that answer `usage-tracker X.Y.Z` still parse.
+        print(f'{PROG} {VERSION}')
         return 0
 
     # Tanımadığını **sunucu başlatarak** karşılamak, `guard`'ın çıkış-kodu sözleşmesini
@@ -468,18 +474,22 @@ def main(argv=None):
         from usage.cli import EXIT_USAGE
         hint = (f"unknown command '{argv[0]}'" if not argv[0].startswith('-')
                 else f"unknown option '{argv[0]}'")
-        print(f'usage-tracker: {hint}\n'
+        print(f'{PROG}: {hint}\n'
               f"commands: {' · '.join(CLI_COMMANDS)}\n"
               f'run without arguments to serve the panel; --help for details', file=sys.stderr)
         return EXIT_USAGE
 
     if '--help' in argv or '-h' in argv:
-        print(f'usage-tracker {VERSION} — AI usage/limit/spend tracker\n'
+        print(f'{PROG} {VERSION} — AI usage/limit/spend tracker\n'
               f'\n'
-              f'  python3 server.py            panel server (http://{HOST}:{PORT})\n'
-              f'  python3 server.py --no-open   do not open a browser (for login autostart)\n'
-              f'  python3 server.py setup       setup wizard (--ui for the browser version)\n'
-              f'  python3 server.py --version   version\n'
+              f'  usagelens              panel server (http://{HOST}:{PORT})\n'
+              f'  usagelens --no-open    do not open a browser (for login autostart)\n'
+              f'  usagelens setup        setup wizard (--ui for the browser version)\n'
+              f'  usagelens --version    version\n'
+              f'  usagelens <command> -h one of: {", ".join(CLI_COMMANDS)}\n'
+              f'\n'
+              f'  `usage-tracker` is the same program under its old name; from a clone,\n'
+              f'  `python3 server.py` does the same.\n'
               f'\n'
               f'Environment:\n'
               f'  USAGE_PORT   port (default 8770)\n'
