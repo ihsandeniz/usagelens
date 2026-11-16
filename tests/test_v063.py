@@ -1,5 +1,6 @@
 """0.6.3 hazırlık (G-gb59vs) — denetim bulgularının önce-kırmızı kilitleri."""
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -108,6 +109,7 @@ class GizliSaglayiciIstekTest(unittest.TestCase):
         self.assertIn('hide', metin.lower())
 
 
+@unittest.skipIf(os.name == 'nt' or not shutil.which('bash'), 'start.sh yalnız POSIX')
 class StartShEnvTest(unittest.TestCase):
     """SEC-F001: start.sh anahtar dosyasını `. "$ENV_FILE"` ile kabuk kodu olarak çalıştırıyordu;
     değerdeki `$(…)` ya da `;` komut olarak koşuyordu."""
@@ -127,7 +129,7 @@ class StartShEnvTest(unittest.TestCase):
             r = subprocess.run(['timeout', '20', 'bash', str(ROOT / 'start.sh')], env=env,
                                cwd=td, capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, r.stderr)
-            dokum = dict(l.split('=', 1) for l in (td / 'dokum').read_text().splitlines() if '=' in l)
+            dokum = dict(l.split('=', 1) for l in (td / 'dokum').read_text(encoding='utf-8').splitlines() if '=' in l)
             return dokum, sorted(x.name for x in td.iterdir())
 
     def test_deger_komut_olarak_calismaz(self):
