@@ -146,6 +146,25 @@ class YayinNotlari(unittest.TestCase):
             self.assertIs(k.get('experimental'), True, k['id'])
 
 
+    def test_demo_kartlari_deneysel_listeyi_izler(self):
+        """Demo kartları elle yazılıyor; Aider rozetsiz kalmış, demo ekranı onu doğrulanmış
+        gibi gösteriyordu (ikinci göz bulgu 3). Rozet tek listeden gelmeli."""
+        from usage import demo
+        from usage.providers import EXPERIMENTAL
+        kartlar = demo.collect(30)
+        self.assertIn('aider', [k['id'] for k in kartlar])
+        for k in kartlar:
+            self.assertIs(bool(k.get('experimental')), k['id'] in EXPERIMENTAL, k['id'])
+
+    def test_changelog_ad_degisikligini_yaziyor(self):
+        """`--version` çıktısı `usage-tracker X` → `usagelens X` oldu; kullanıcının görebileceği
+        bir değişiklik, yayımlanmamış bölümde yazılı olmalı (ikinci göz bulgu 4)."""
+        metin = oku('CHANGELOG.md')
+        bas = metin.index('## Unreleased')
+        bolum = metin[bas:metin.index('\n## ', bas + 1)]
+        for parca in ('--version', '--help', 'usagelens X.Y.Z', 'usage-tracker X.Y.Z'):
+            self.assertIn(parca, bolum)
+
     def test_readme_linux_ikilisini_ve_dogrulamayi_anlatir(self):
         """Yayında `usage-tracker-<sürüm>-linux-x64` + SHA256SUMS.txt var; README yalnız .exe'yi
         söylüyordu, Linux ikilisini ve nasıl doğrulanacağını hiç anmıyordu."""

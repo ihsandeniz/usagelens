@@ -237,7 +237,7 @@ def collect(days: int = 30) -> list:
         day_spend = max(0.05, base + wave)
         demo_byDay.append({'day': day_key, 'usd': round(day_spend, 4)})
 
-    return [
+    cards = [
         # OpenRouter: demo bakiye ve limit — GERÇEK ŞEMA
         {
             'id': 'openrouter',
@@ -426,6 +426,13 @@ def collect(days: int = 30) -> list:
             'updated': datetime.fromtimestamp(now_ms / 1000).strftime('%H:%M:%S'),
         },
     ]
+    # Rozet gerçek yoldaki tek listeden gelir (providers.EXPERIMENTAL): demo kartları elle
+    # yazılınca Aider rozetsiz kalmıştı — demo ekranı onu doğrulanmış gibi gösteriyordu.
+    from .providers import EXPERIMENTAL
+    for card in cards:
+        if card.get('id') in EXPERIMENTAL:
+            card['experimental'] = True
+    return cards
 
 
 # ── /v1/usage wire-format ────────────────────────────────────────────────────

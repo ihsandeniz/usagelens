@@ -60,6 +60,58 @@ class HelpTextTest(unittest.TestCase):
         self.assertIn('python3 server.py', self.out)
 
 
+
+class StandaloneHelpTest(unittest.TestCase):
+    """The Linux release file and the .exe have no `usagelens` on PATH (the wizard installs
+    them as `usage-tracker`, wizard.py:installed_binary) — `--help` must not offer it."""
+
+    def _help(self, argv0, windows):
+        with mock.patch.object(server._paths, 'is_frozen', return_value=True), \
+             mock.patch.object(server._paths, 'is_windows', return_value=windows), \
+             mock.patch.object(server.sys, 'argv', [argv0, '--help']):
+            code, out, _ = _run_main(['--help'])
+        self.assertEqual(code, 0)
+        return out
+
+    def _command_lines(self, out):
+        return [l for l in out.splitlines()[1:] if l.startswith('  ') and not l.startswith('  `')
+                and 'USAGE_' not in l and l.strip()
+                and not l.lstrip().startswith(('This is', 'command is'))]
+
+    def test_linux_download_shows_the_file_itself(self):
+        out = self._help('/home/u/Downloads/usage-tracker-0.6.4-linux-x64', windows=False)
+        cmds = self._command_lines(out)
+        self.assertEqual(len(cmds), 5, out)
+        for line in cmds:
+            self.assertTrue(line.startswith('  ./usage-tracker-0.6.4-linux-x64'), line)
+        self.assertIn('./usage-tracker-0.6.4-linux-x64 setup', out)
+        self.assertIn('installed\n  command is `usage-tracker`', out)
+
+    def test_installed_linux_binary_shows_usage_tracker(self):
+        out = self._help('/home/u/.local/bin/usage-tracker', windows=False)
+        for line in self._command_lines(out):
+            self.assertTrue(line.startswith('  usage-tracker'), line)
+
+    def test_windows_exe_shows_its_name_without_exe(self):
+        out = self._help(r'C:\Users\u\Downloads\usage-tracker-0.6.4-windows-x64.exe',
+                         windows=True)
+        self.assertIn('usage-tracker-0.6.4-windows-x64 setup', out)
+        for line in self._command_lines(out):
+            self.assertTrue(line.startswith('  usage-tracker-0.6.4-windows-x64'), line)
+        self.assertNotIn('./', out)
+
+    def test_no_standalone_help_line_offers_usagelens(self):
+        for argv0, win in (('/tmp/usage-tracker-0.6.4-linux-x64', False),
+                           ('/home/u/.local/bin/usage-tracker', False),
+                           (r'C:\x\usage-tracker.exe', True)):
+            with self.subTest(argv0=argv0):
+                for line in self._command_lines(self._help(argv0, win)):
+                    self.assertNotIn('usagelens', line)
+
+    def test_pip_install_still_leads_with_usagelens(self):
+        with mock.patch.object(server._paths, 'is_frozen', return_value=False):
+            self.assertEqual(server.help_command('/x/bin/usage-tracker'), 'usagelens')
+
 class OldNameStillWorksTest(unittest.TestCase):
     def test_both_console_scripts_point_at_the_same_entry(self):
         text = (ROOT / 'pyproject.toml').read_text(encoding='utf-8')

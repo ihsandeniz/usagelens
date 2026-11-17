@@ -3,6 +3,22 @@
 Release notes for 0.6.2 and earlier live on the
 [GitHub releases page](https://github.com/ihsandeniz/usagelens/releases).
 
+## Unreleased
+
+### Changed
+
+- **The program now calls itself `usagelens`.** `--version` prints `usagelens X.Y.Z`
+  (was `usage-tracker X.Y.Z`), and `--help`, the unknown-command error and the CLI usage
+  line (`usage: usagelens …`) use the new name too. The `usage-tracker` command still works
+  and runs the same program. If a script of yours matches the old `--version` text (for
+  example `grep usage-tracker`), match the version number instead; the setup wizard
+  already reads only the last word, so it accepts both forms.
+- **`--help` in the standalone build names a command you have.** The Linux release file
+  and the Windows `.exe` show the file you ran (before setup) or `usage-tracker` (after
+  setup) instead of `usagelens`, which only pip/pipx put on your PATH.
+- **Aider and Continue are marked experimental.** Their cards carry the "experimental"
+  badge (also in demo mode), and the README lists them with the other unverified providers.
+
 ## 0.6.3
 
 ### Fixed

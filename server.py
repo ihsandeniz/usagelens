@@ -443,6 +443,28 @@ CLI_COMMANDS = ('usage', 'providers', 'guard', 'watch', 'doctor', 'config', 'kan
                 'setup', 'panel', 'statusline')
 
 
+def help_command(argv0=None, frozen=None, windows=None):
+    """The command `--help` tells the user to type.
+
+    pip/pipx install both `usagelens` and `usage-tracker`, so the new name is right there.
+    A frozen binary (Linux release file, Windows .exe) has neither on PATH: before setup it is
+    the downloaded file itself, after setup the wizard installs it as `usage-tracker`
+    (usage/wizard.py:installed_binary). Printing `usagelens setup` there named a command the
+    user does not have (second review of the 11-17 nightly branch, finding 2).
+    """
+    frozen = _paths.is_frozen() if frozen is None else frozen
+    if not frozen:
+        return PROG
+    windows = _paths.is_windows() if windows is None else windows
+    raw = sys.argv[0] if argv0 is None else argv0
+    name = raw.replace('\\', '/').rsplit('/', 1)[-1] or 'usage-tracker'
+    if windows and name.lower().endswith('.exe'):
+        name = name[:-4]
+    if name == 'usage-tracker' or windows:
+        return name
+    return f'./{name}'                      # downloaded file, not on PATH yet
+
+
 def main(argv=None):
     # İlk satır, çünkü ilk `print`'ten önce olmak zorunda: açılış satırındaki `→` cp1252'de
     # yok ve çıktı boruya gittiğinde paket daha portu bağlamadan çöküyordu (Windows,
@@ -480,17 +502,25 @@ def main(argv=None):
         return EXIT_USAGE
 
     if '--help' in argv or '-h' in argv:
+        cmd = help_command()
+        w = max(len(cmd) + 10, 23)
+        if cmd == PROG:
+            note = (f'  `usage-tracker` is the same program under its old name; from a clone,\n'
+                    f'  `python3 server.py` does the same.\n')
+        else:
+            note = (f'  This is the standalone build. After `{cmd} setup` the installed\n'
+                    f'  command is `usage-tracker`.\n')
+        rows = ((cmd, 'panel server (http://%s:%s)' % (HOST, PORT)),
+                (f'{cmd} --no-open', 'do not open a browser (for login autostart)'),
+                (f'{cmd} setup', 'setup wizard (--ui for the browser version)'),
+                (f'{cmd} --version', 'version'),
+                (f'{cmd} <command> -h', f'one of: {", ".join(CLI_COMMANDS)}'))
         print(f'{PROG} {VERSION} — AI usage/limit/spend tracker\n'
               f'\n'
-              f'  usagelens              panel server (http://{HOST}:{PORT})\n'
-              f'  usagelens --no-open    do not open a browser (for login autostart)\n'
-              f'  usagelens setup        setup wizard (--ui for the browser version)\n'
-              f'  usagelens --version    version\n'
-              f'  usagelens <command> -h one of: {", ".join(CLI_COMMANDS)}\n'
-              f'\n'
-              f'  `usage-tracker` is the same program under its old name; from a clone,\n'
-              f'  `python3 server.py` does the same.\n'
-              f'\n'
+              + ''.join(f'  {a:<{w}}{b}\n' for a, b in rows)
+              + f'\n'
+              + note
+              + f'\n'
               f'Environment:\n'
               f'  USAGE_PORT   port (default 8770)\n'
               f'  USAGE_DEMO=1 synthetic demo data\n'
