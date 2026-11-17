@@ -1294,10 +1294,10 @@ def cmd_statusline(args) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = _Parser(prog='usage-tracker',
+    parser = _Parser(prog='usagelens',
                      description='AI usage, limits and real spend — from the command line.',
                      epilog='exit codes for `guard`: 0 ok · 1 warn · 2 critical · 3 unknown')
-    parser.add_argument('--version', action='version', version=f'usage-tracker {version()}')
+    parser.add_argument('--version', action='version', version=f'usagelens {version()}')
     subparsers = parser.add_subparsers(dest='command', metavar='command')
 
     p_usage = subparsers.add_parser('usage', help='show limits and spend')
