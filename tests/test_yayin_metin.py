@@ -97,16 +97,53 @@ class YayinNotlari(unittest.TestCase):
 
     def test_deneysel_listesi_belgeyle_ayni(self):
         from usage.providers import EXPERIMENTAL
-        self.assertEqual(len(EXPERIMENTAL), 7)
+        # Aider ve Continue: adaptörlerin kendi başlığı "alan adları ADAY — canlı doğrulanacak"
+        # diyor; gerçek bir kurulumda doğrulanmadan ana listede durmasınlar.
+        self.assertEqual(len(EXPERIMENTAL), 9)
         adlar = {'deepseek': 'DeepSeek', 'novita': 'Novita', 'deepinfra': 'DeepInfra',
                  'huggingface': 'Hugging Face', 'together': 'Together', 'cody': 'Cody',
-                 'windsurf': 'Windsurf'}
+                 'windsurf': 'Windsurf', 'aider': 'Aider', 'continue': 'Continue'}
         self.assertEqual(set(adlar), set(EXPERIMENTAL))
-        for rel in ('README.tr.md', 'docs/GUIDE.md'):
+        for rel in ('README.md', 'README.tr.md', 'docs/GUIDE.md'):
             metin = oku(rel)
             for ad in adlar.values():
                 with self.subTest(dosya=rel, ad=ad):
                     self.assertIn(ad, metin)
+
+
+    def test_deneysel_adlar_ana_listede_degil(self):
+        """Belgedeki 'doğrulanmış' bölüm (deneysel parantezinden önceki kısım) deneysel bir
+        adaptörü saymamalı — eskiden Aider ve Continue orada duruyordu."""
+        for rel, ayrac in (('README.tr.md', '**deneysel**'), ('docs/GUIDE.md', 'experimental ones')):
+            satir = next(s for s in oku(rel).splitlines() if '16 ad' in s)
+            ana = satir.split(ayrac, 1)[0]
+            for ad in ('Aider', 'Continue', 'Cody', 'Windsurf', 'DeepSeek'):
+                with self.subTest(dosya=rel, ad=ad):
+                    self.assertNotIn(ad, ana)
+
+    def test_aider_ve_continue_kartlari_deneysel(self):
+        import json, tempfile
+        from pathlib import Path
+        from unittest import mock
+        from usage import providers
+        from usage.providers import aider, continuedev
+        with tempfile.TemporaryDirectory() as td:
+            log = Path(td) / 'analytics.jsonl'
+            log.write_text(json.dumps({'event': 'message_send', 'time': 1_900_000_000,
+                                       'properties': {'total_tokens_sent': 10,
+                                                      'total_tokens_received': 5,
+                                                      'model': 'm'}}) + '\n', encoding='utf-8')
+            dev = Path(td) / 'dev_data'
+            dev.mkdir()
+            (dev / 'tokens_generated.jsonl').write_text(json.dumps(
+                {'model': 'm', 'promptTokens': 3, 'generatedTokens': 4}) + '\n', encoding='utf-8')
+            with mock.patch.object(aider, 'LOG_PATH', log), mock.patch.object(aider, '_CACHE', None), \
+                 mock.patch.object(continuedev, 'DATA_DIR', dev), \
+                 mock.patch.object(continuedev, '_CACHE', None):
+                kartlar = providers.collect(30, only=['aider', 'continue'])
+        self.assertEqual(sorted(k['id'] for k in kartlar), ['aider', 'continue'])
+        for k in kartlar:
+            self.assertIs(k.get('experimental'), True, k['id'])
 
 
 if __name__ == '__main__':
