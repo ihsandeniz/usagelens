@@ -49,6 +49,7 @@ with anonymous evidence (`usagelens kanit`) you can paste into a bug report.
 |---|---|
 | From a clone (Linux) | `git clone https://github.com/ihsandeniz/usagelens && cd usagelens && ./setup.sh` — adds waybar, widget and tray steps; `./setup.sh --ui` for a browser window |
 | Arch (AUR) | package `usagelens` — **not uploaded yet** |
+| Linux binary | from [Releases](https://github.com/ihsandeniz/usagelens/releases/latest) download `usage-tracker-<version>-linux-x64` and `SHA256SUMS.txt`, check with `sha256sum -c SHA256SUMS.txt --ignore-missing`, then `chmod +x` it and run `./usage-tracker-<version>-linux-x64 setup` — one file, no Python needed, built on Debian 12 |
 | Windows | download the `.exe` from [Releases](https://github.com/ihsandeniz/usagelens/releases/latest) and double-click it → [docs/WINDOWS.md](docs/WINDOWS.md) |
 
 `usage-tracker` still works as a command name.

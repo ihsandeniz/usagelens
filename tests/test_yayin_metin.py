@@ -146,5 +146,14 @@ class YayinNotlari(unittest.TestCase):
             self.assertIs(k.get('experimental'), True, k['id'])
 
 
+    def test_readme_linux_ikilisini_ve_dogrulamayi_anlatir(self):
+        """Yayında `usage-tracker-<sürüm>-linux-x64` + SHA256SUMS.txt var; README yalnız .exe'yi
+        söylüyordu, Linux ikilisini ve nasıl doğrulanacağını hiç anmıyordu."""
+        metin = oku('README.md')
+        self.assertIn('usage-tracker-<version>-linux-x64', metin)
+        self.assertIn('SHA256SUMS.txt', metin)
+        self.assertIn('sha256sum -c SHA256SUMS.txt --ignore-missing', metin)
+
+
 if __name__ == '__main__':
     unittest.main()
